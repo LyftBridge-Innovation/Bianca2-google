@@ -159,13 +159,21 @@ Should return the most recent active session for the user.
 ## Verification Checklist
 
 - [x] Firestore collections created: `users`, `sessions`, `tool_action_log`
-- [ ] Session created with status: `active`
-- [ ] Messages persisted to session
-- [ ] Tool calls logged to both session and tool_action_log
-- [ ] `human_readable` field generated correctly
-- [ ] `last_activity_at` updates on every message
-- [ ] User document exists with timezone
-- [ ] New messages append to existing session when session_id provided
+- [x] Session created with status: `active`
+- [x] Messages persisted to session
+- [x] Tool calls logged to both session and tool_action_log
+- [x] `human_readable` field generated correctly (verified in code, requires Firestore index to query)
+- [x] `last_activity_at` updates on every message
+- [x] User document exists with timezone
+- [x] New messages append to existing session when session_id provided
+
+### Notes on Firestore Indices
+
+Two composite indices are needed for certain queries (optional, create when needed):
+1. **tool_action_log**: (`user_id` ASC, `timestamp` DESC) - for querying user's tool actions
+2. **sessions**: (`user_id` ASC, `status` ASC, `last_activity_at` DESC) - for getting active sessions
+
+Firebase will provide index creation links in error messages. Click the link, wait 1-2 minutes for build.
 
 ## Next Steps
 

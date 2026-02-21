@@ -9,3 +9,5 @@ langchain
 langchain-google-genai
 firebase-admin
 google-cloud-firestore
+google-cloud-aiplatform
+google-cloud-discoveryengine

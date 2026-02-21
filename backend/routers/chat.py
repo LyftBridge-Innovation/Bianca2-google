@@ -1,5 +1,5 @@
 """Chat endpoint for the AI Chief of Staff using Gemini + LangChain."""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -8,6 +8,7 @@ from prompts import CHIEF_OF_STAFF_SYSTEM_PROMPT
 from langchain_tools import ALL_TOOLS
 from models import FirestoreCollections, Session, Message, ToolCall, ToolActionLog
 from memory_utils import generate_human_readable
+from summarization import summarize_session
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -42,10 +43,11 @@ class ChatResponse(BaseModel):
 # ── Chat Endpoint ─────────────────────────────────────────────────────────────
 
 @router.post("/", response_model=ChatResponse)
-async def chat(request: ChatRequest):
+async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
     """
-    Main chat endpoint with Phase 3A session persistence.
+    Main chat endpoint with Phase 3A session persistence and Phase 3B summarization.
     Creates or resumes a session, persists all messages and tool calls to Firestore.
+    When creating a new session, triggers summarization of previous session as background task.
     """
     try:
         from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
@@ -57,9 +59,20 @@ async def chat(request: ChatRequest):
             if not session:
                 raise HTTPException(status_code=404, detail=f"Session {request.session_id} not found")
         else:
+            # Check if user has an existing active session (Phase 3B)
+            previous_session = fs.get_active_session_for_user(request.user_id)
+            
             # Create new session
             session = Session(user_id=request.user_id, modality="chat")
             fs.create_session(session)
+            
+            # Trigger summarization of previous session as background task (non-blocking)
+            if previous_session:
+                background_tasks.add_task(
+                    summarize_session,
+                    user_id=request.user_id,
+                    session_id=previous_session.session_id
+                )
         
         # Persist user message to session
         user_message = Message(role="user", content=request.message)

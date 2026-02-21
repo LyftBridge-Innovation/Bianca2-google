@@ -16,5 +16,10 @@ FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID")
 FIREBASE_CREDENTIALS_PATH = os.getenv("FIREBASE_CREDENTIALS_PATH", "firebase-credentials.json")
 FIREBASE_DATABASE_NAME = os.getenv("FIREBASE_DATABASE_NAME", "(default)")
 
+# Vertex AI Search configuration (Phase 3B/3C)
+VERTEX_DATASTORE_ID = os.getenv("VERTEX_DATASTORE_ID")
+VERTEX_LOCATION = os.getenv("VERTEX_LOCATION", "global")
+VERTEX_PROJECT_ID = os.getenv("VERTEX_PROJECT_ID", FIREBASE_PROJECT_ID)
+
 # Assistant configuration
 ASSISTANT_NAME = os.getenv("ASSISTANT_NAME", "Bianca")

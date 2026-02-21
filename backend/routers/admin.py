@@ -1,7 +1,9 @@
 """Admin endpoints for Phase 3A setup and testing."""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from models import FirestoreCollections, User
 from config import TEST_USER_ID, GOOGLE_REFRESH_TOKEN, ASSISTANT_NAME
+from summarization import summarize_session
+import asyncio
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 fs = FirestoreCollections()
@@ -71,3 +73,87 @@ def get_user_tool_actions(user_id: str, limit: int = 10):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch tool actions: {str(e)}")
+
+
+# ── Phase 3B Admin Endpoints ──────────────────────────────────────────────────
+
+
+@router.get("/memory/event/{memory_id}")
+def get_event_memory(memory_id: str):
+    """Get a specific event memory by ID."""
+    try:
+        doc = fs.db.collection('event_memories').document(memory_id).get()
+        if not doc.exists:
+            raise HTTPException(status_code=404, detail="Event memory not found")
+        return doc.to_dict()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch event memory: {str(e)}")
+
+
+@router.get("/memory/entity/{memory_id}")
+def get_entity_memory(memory_id: str):
+    """Get a specific entity memory by ID."""
+    try:
+        doc = fs.db.collection('entity_memories').document(memory_id).get()
+        if not doc.exists:
+            raise HTTPException(status_code=404, detail="Entity memory not found")
+        return doc.to_dict()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch entity memory: {str(e)}")
+
+
+@router.get("/memories/{user_id}")
+def get_user_memories(user_id: str, memory_type: str = None, limit: int = 10):
+    """Get all memories for a user, optionally filtered by type."""
+    try:
+        results = {"event_memories": [], "entity_memories": []}
+        
+        if not memory_type or memory_type == "event":
+            event_docs = fs.db.collection('event_memories')\
+                .where('user_id', '==', user_id)\
+                .order_by('created_at', direction='DESCENDING')\
+                .limit(limit)\
+                .get()
+            results["event_memories"] = [doc.to_dict() for doc in event_docs]
+        
+        if not memory_type or memory_type == "entity":
+            entity_docs = fs.db.collection('entity_memories')\
+                .where('user_id', '==', user_id)\
+                .order_by('created_at', direction='DESCENDING')\
+                .limit(limit)\
+                .get()
+            results["entity_memories"] = [doc.to_dict() for doc in entity_docs]
+        
+        return results
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch memories: {str(e)}")
+
+
+@router.post("/re-summarize/{session_id}")
+async def re_summarize_session(session_id: str, background_tasks: BackgroundTasks):
+    """
+    Manually trigger re-summarization of a session.
+    Useful for testing immutability (creates new memories with is_update=True).
+    """
+    try:
+        # Get the session
+        session = fs.get_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        # Trigger summarization as background task
+        background_tasks.add_task(
+            summarize_session,
+            user_id=session.user_id,
+            session_id=session_id
+        )
+        
+        return {
+            "status": "triggered",
+            "session_id": session_id,
+            "message": "Re-summarization started in background"
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to trigger re-summarization: {str(e)}")
