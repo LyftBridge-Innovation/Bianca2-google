@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 from firestore_client import get_firestore_client
+from google.cloud import firestore
 import uuid
 
 
