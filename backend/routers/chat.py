@@ -1,10 +1,13 @@
 """Chat endpoint for the AI Chief of Staff using Gemini + LangChain."""
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from typing import Optional
 from langchain_google_genai import ChatGoogleGenerativeAI
-from config import GOOGLE_API_KEY
+from config import GOOGLE_API_KEY, TEST_USER_ID
 from prompts import CHIEF_OF_STAFF_SYSTEM_PROMPT
 from langchain_tools import ALL_TOOLS
+from models import FirestoreCollections, Session, Message, ToolCall, ToolActionLog
+from memory_utils import generate_human_readable
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -15,6 +18,9 @@ llm = ChatGoogleGenerativeAI(
     temperature=0.7,
 ).bind_tools(ALL_TOOLS)
 
+# Initialize Firestore collections
+fs = FirestoreCollections()
+
 # ── Request/Response Models ───────────────────────────────────────────────────
 
 class ChatMessage(BaseModel):
@@ -24,30 +30,46 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
-    history: list[ChatMessage] = []
+    session_id: Optional[str] = None  # If provided, resume existing session
+    user_id: str = TEST_USER_ID  # Default to test user for now
 
 
 class ChatResponse(BaseModel):
     response: str
+    session_id: str
     history: list[ChatMessage]
-
 
 # ── Chat Endpoint ─────────────────────────────────────────────────────────────
 
 @router.post("/", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """
-    Main chat endpoint. Accepts a user message and optional conversation history.
-    Returns AI response with updated history.
+    Main chat endpoint with Phase 3A session persistence.
+    Creates or resumes a session, persists all messages and tool calls to Firestore.
     """
     try:
         from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
         
-        # Build message chain with system prompt, history, and current message
+        # Get or create session
+        if request.session_id:
+            # Resume existing session
+            session = fs.get_session(request.session_id)
+            if not session:
+                raise HTTPException(status_code=404, detail=f"Session {request.session_id} not found")
+        else:
+            # Create new session
+            session = Session(user_id=request.user_id, modality="chat")
+            fs.create_session(session)
+        
+        # Persist user message to session
+        user_message = Message(role="user", content=request.message)
+        fs.append_message(session.session_id, user_message)
+        
+        # Build message chain with system prompt and session history
         messages = [SystemMessage(content=CHIEF_OF_STAFF_SYSTEM_PROMPT)]
         
-        # Add conversation history
-        for msg in request.history:
+        # Add all messages from session history
+        for msg in session.messages:
             if msg.role == "user":
                 messages.append(HumanMessage(content=msg.content))
             elif msg.role == "assistant":
@@ -55,6 +77,9 @@ async def chat(request: ChatRequest):
         
         # Add current user message
         messages.append(HumanMessage(content=request.message))
+        
+        # Track tool calls for logging
+        session_tool_calls = []
         
         # Invoke LLM with tools
         response = llm.invoke(messages)
@@ -78,6 +103,32 @@ async def chat(request: ChatRequest):
                     if tool.name == tool_name:
                         try:
                             tool_result = tool.invoke(tool_args)
+                            result_str = str(tool_result)
+                            
+                            # Log tool call to session
+                            tc = ToolCall(
+                                tool_name=tool_name,
+                                parameters=tool_args,
+                                result=result_str
+                            )
+                            session_tool_calls.append(tc)
+                            fs.append_tool_call(session.session_id, tc)
+                            
+                            # Generate human readable description
+                            human_readable = generate_human_readable(tool_name, tool_args, result_str)
+                            
+                            # Log to global tool_action_log
+                            action_log = ToolActionLog(
+                                user_id=request.user_id,
+                                session_id=session.session_id,
+                                tool_name=tool_name,
+                                human_readable=human_readable,
+                                parameters=tool_args,
+                                result=result_str,
+                                modality="chat"
+                            )
+                            fs.log_tool_action(action_log)
+                            
                         except Exception as e:
                             tool_result = f"Error executing {tool_name}: {str(e)}"
                         break
@@ -92,11 +143,9 @@ async def chat(request: ChatRequest):
             response = llm.invoke(messages)
         
         # Extract final text response
-        # Handle both string and list content formats
         if isinstance(response.content, str):
             ai_response = response.content
         elif isinstance(response.content, list):
-            # Extract text from content blocks
             text_parts = []
             for block in response.content:
                 if isinstance(block, dict) and block.get("type") == "text":
@@ -106,16 +155,22 @@ async def chat(request: ChatRequest):
             ai_response = " ".join(text_parts) if text_parts else "I've completed your request."
         else:
             ai_response = str(response.content)
-
-        # Update history
-        updated_history = request.history + [
-            ChatMessage(role="user", content=request.message),
-            ChatMessage(role="assistant", content=ai_response),
+        
+        # Persist assistant message to session
+        assistant_message = Message(role="assistant", content=ai_response)
+        fs.append_message(session.session_id, assistant_message)
+        
+        # Build history for response (fetch fresh from Firestore to ensure consistency)
+        updated_session = fs.get_session(session.session_id)
+        history = [
+            ChatMessage(role=msg.role, content=msg.content)
+            for msg in updated_session.messages
         ]
 
         return ChatResponse(
             response=ai_response,
-            history=updated_history,
+            session_id=session.session_id,
+            history=history,
         )
 
     except Exception as e:
@@ -130,3 +185,21 @@ def chat_health():
         "model": "gemini-2.5-flash",
         "tools_available": len(ALL_TOOLS),
     }
+
+
+@router.get("/session/{session_id}")
+def get_session(session_id: str):
+    """Get session details for debugging/testing."""
+    session = fs.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return session.model_dump()
+
+
+@router.get("/user/{user_id}/sessions")
+def get_user_sessions(user_id: str):
+    """Get active session for a user."""
+    session = fs.get_active_session_for_user(user_id)
+    if not session:
+        return {"active_session": None}
+    return {"active_session": session.model_dump()}

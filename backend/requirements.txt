@@ -7,3 +7,5 @@ google-api-python-client
 pydantic
 langchain
 langchain-google-genai
+firebase-admin
+google-cloud-firestore
