@@ -2,8 +2,7 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from models import FirestoreCollections, User
 from config import TEST_USER_ID, GOOGLE_REFRESH_TOKEN, ASSISTANT_NAME
-from summarization import summarize_session
-import asyncio
+from summarization import summarize_session_sync
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 fs = FirestoreCollections()
@@ -144,7 +143,7 @@ async def re_summarize_session(session_id: str, background_tasks: BackgroundTask
         
         # Trigger summarization as background task
         background_tasks.add_task(
-            summarize_session,
+            summarize_session_sync,
             user_id=session.user_id,
             session_id=session_id
         )
@@ -157,3 +156,28 @@ async def re_summarize_session(session_id: str, background_tasks: BackgroundTask
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to trigger re-summarization: {str(e)}")
+
+
+@router.post("/test-summarize/{session_id}")
+def test_summarize_sync(session_id: str):
+    """
+    Test endpoint that runs summarization synchronously to see errors.
+    NOT for production - blocks the request until completion.
+    """
+    try:
+        session = fs.get_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        # Run synchronously to see any errors
+        from summarization import summarize_session
+        summarize_session(user_id=session.user_id, session_id=session_id)
+        
+        return {
+            "status": "completed",
+            "session_id": session_id,
+            "message": "Summarization completed successfully"
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Summarization failed: {str(e)}")

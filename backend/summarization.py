@@ -10,11 +10,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Use cheap model for summarization (Gemini 1.5 Flash 8B)
-SUMMARIZATION_MODEL = "gemini-1.5-flash-8b"
+# Use cheap model for summarization (Gemini 1.5 Flash 002)
+SUMMARIZATION_MODEL = "gemini-1.5-flash-002"
 
 
-async def extract_event_memory(session: Session) -> str:
+def extract_event_memory(session: Session) -> str:
     """
     Extract event-based memory from session.
     Returns 3-7 bullet points of concrete events, actions, and outcomes.
@@ -57,7 +57,7 @@ Tool Actions:
 Extract event-based memories from above."""
     
     try:
-        # Use async LLM call
+        # Use sync LLM call
         llm = ChatGoogleGenerativeAI(
             model=SUMMARIZATION_MODEL,
             google_api_key=GOOGLE_API_KEY,
@@ -69,7 +69,7 @@ Extract event-based memories from above."""
             HumanMessage(content=user_message)
         ]
         
-        response = await llm.ainvoke(messages)
+        response = llm.invoke(messages)
         content = response.content.strip()
         
         # If response is empty or too short, return a fallback
@@ -83,7 +83,7 @@ Extract event-based memories from above."""
         return f"- User had a conversation with {ASSISTANT_NAME} on {session.created_at.strftime('%Y-%m-%d')}"
 
 
-async def extract_entity_memory(session: Session) -> str:
+def extract_entity_memory(session: Session) -> str:
     """
     Extract entity-based memory from session.
     Returns 3-7 bullet points about people, companies, and topics mentioned.
@@ -127,7 +127,7 @@ Extract entity-based information about people, companies, and topics mentioned."
             HumanMessage(content=user_message)
         ]
         
-        response = await llm.ainvoke(messages)
+        response = llm.invoke(messages)
         content = response.content.strip()
         
         # If response is empty or too short, return fallback
@@ -141,7 +141,7 @@ Extract entity-based information about people, companies, and topics mentioned."
         return f"- User interacts with {ASSISTANT_NAME} for calendar and email management"
 
 
-async def summarize_session(user_id: str, session_id: str) -> None:
+def summarize_session(user_id: str, session_id: str) -> None:
     """
     Main summarization orchestration function.
     
@@ -171,11 +171,13 @@ async def summarize_session(user_id: str, session_id: str) -> None:
             logger.info(f"Session {session_id} too short to summarize")
             return
         
-        # Run both extractions in parallel
-        event_content, entity_content = await asyncio.gather(
-            extract_event_memory(session),
-            extract_entity_memory(session)
-        )
+        # Run both extractions in parallel using ThreadPoolExecutor
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            event_future = executor.submit(extract_event_memory, session)
+            entity_future = executor.submit(extract_entity_memory, session)
+            event_content = event_future.result()
+            entity_content = entity_future.result()
         
         logger.info(f"Extraction complete for session {session_id}")
         
@@ -208,7 +210,7 @@ async def summarize_session(user_id: str, session_id: str) -> None:
         from vertex_search import push_memory_to_vertex
         
         try:
-            event_vertex_id = await push_memory_to_vertex(
+            event_vertex_id = push_memory_to_vertex(
                 memory_id=event_memory_id,
                 content=event_content,
                 user_id=user_id,
@@ -216,7 +218,7 @@ async def summarize_session(user_id: str, session_id: str) -> None:
                 created_at=event_memory.created_at
             )
             
-            entity_vertex_id = await push_memory_to_vertex(
+            entity_vertex_id = push_memory_to_vertex(
                 memory_id=entity_memory_id,
                 content=entity_content,
                 user_id=user_id,
@@ -239,8 +241,9 @@ async def summarize_session(user_id: str, session_id: str) -> None:
             # Don't fail the entire summarization if Vertex push fails
         
         # Update session status
-        fs.mark_session_summarized(
+        fs.update_session_status(
             session_id=session_id,
+            status="summarized",
             summary_event_id=event_memory_id,
             summary_entity_id=entity_memory_id
         )
@@ -249,4 +252,12 @@ async def summarize_session(user_id: str, session_id: str) -> None:
     
     except Exception as e:
         logger.error(f"Summarization failed for session {session_id}: {e}", exc_info=True)
+
+
+def summarize_session_sync(user_id: str, session_id: str) -> None:
+    """
+    Alias for summarize_session for backwards compatibility.
+    Function is now fully synchronous and can be called directly.
+    """
+    summarize_session(user_id, session_id)
 
