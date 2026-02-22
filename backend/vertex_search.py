@@ -144,6 +144,9 @@ def search_memories(
         # Execute search
         response = client.search(request=request)
         
+        # Create document client to fetch full documents
+        doc_client = discoveryengine.DocumentServiceClient()
+        
         # Extract and filter results
         results = []
         for result in response.results:
@@ -155,8 +158,21 @@ def search_memories(
             if result_user_id != user_id:
                 continue
             
-            # Get content from document.content field (raw_bytes)
-            content = doc.content.raw_bytes.decode('utf-8') if doc.content and doc.content.raw_bytes else ""
+            # Fetch the full document to get content
+            # Search results don't include content, so we need to fetch it separately
+            try:
+                doc_path = doc_client.document_path(
+                    project=VERTEX_PROJECT_ID,
+                    location=VERTEX_LOCATION,
+                    data_store=VERTEX_DATASTORE_ID,
+                    branch="default_branch",
+                    document=doc.id
+                )
+                full_doc = doc_client.get_document(name=doc_path)
+                content = full_doc.content.raw_bytes.decode('utf-8') if full_doc.content and full_doc.content.raw_bytes else ""
+            except Exception as e:
+                logger.warning(f"Failed to fetch content for document {doc.id}: {e}")
+                content = ""
             
             results.append({
                 "memory_id": doc_data.get("memory_id") or doc.id,
