@@ -6,7 +6,7 @@ from config import GOOGLE_API_KEY, ASSISTANT_NAME
 
 # Use cheapest model for human_readable generation
 _cheap_llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash-8b",
+    model="gemini-2.5-flash",
     google_api_key=GOOGLE_API_KEY,
     temperature=0.3,
 )

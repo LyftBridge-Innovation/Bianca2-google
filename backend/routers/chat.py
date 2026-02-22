@@ -8,7 +8,8 @@ from prompts import CHIEF_OF_STAFF_SYSTEM_PROMPT
 from langchain_tools import ALL_TOOLS
 from models import FirestoreCollections, Session, Message, ToolCall, ToolActionLog
 from memory_utils import generate_human_readable
-from summarization import summarize_session
+from summarization import summarize_session_sync
+from memory_retrieval import retrieve_memories_for_message, format_memory_injection
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -69,7 +70,7 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
             # Trigger summarization of previous session as background task (non-blocking)
             if previous_session:
                 background_tasks.add_task(
-                    summarize_session,
+                    summarize_session_sync,
                     user_id=request.user_id,
                     session_id=previous_session.session_id
                 )
@@ -90,6 +91,29 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
         
         # Add current user message
         messages.append(HumanMessage(content=request.message))
+        
+        # ── Phase 3C: Retrieve and inject memories ───────────────────────────
+        memory_data = retrieve_memories_for_message(
+            user_message=request.message,
+            user_id=request.user_id
+        )
+        
+        # Inject into system prompt if memories exist
+        if memory_data["total_count"] > 0:
+            memory_block = format_memory_injection(
+                event_memories=memory_data["event_memories"],
+                entity_memories=memory_data["entity_memories"]
+            )
+            
+            # Update system message (first message in chain)
+            original_system_prompt = CHIEF_OF_STAFF_SYSTEM_PROMPT
+            enriched_system_prompt = f"{original_system_prompt}\n\n{memory_block}"
+            messages[0] = SystemMessage(content=enriched_system_prompt)
+            
+            from logging import getLogger
+            logger = getLogger(__name__)
+            logger.info(f"Injected {memory_data['total_count']} memories (window: {memory_data['recency_window_days']} days)")
+        # ────────────────────────────────────────────────────────────────────
         
         # Track tool calls for logging
         session_tool_calls = []

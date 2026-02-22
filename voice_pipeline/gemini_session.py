@@ -60,7 +60,13 @@ class GeminiSession:
             audio_data = await audio_handler.get_mic_audio()
             if DEBUG_LOGGING:
                 print("📤 Sending audio to Gemini...")
-            await self.session.send_realtime_input(audio=audio_data)
+            try:
+                await self.session.send_realtime_input(audio=audio_data)
+                # Small delay to prevent overwhelming the API
+                await asyncio.sleep(0.01)
+            except Exception as e:
+                if DEBUG_LOGGING:
+                    print(f"⚠️ Error sending audio: {e}")
     
     async def receive_audio_stream(self, audio_handler):
         """Continuously receive audio responses from Gemini."""

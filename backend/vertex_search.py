@@ -2,7 +2,6 @@
 from datetime import datetime
 from typing import Optional
 from google.cloud import discoveryengine_v1beta as discoveryengine
-from google.protobuf.json_format import ParseDict
 from config import FIREBASE_PROJECT_ID
 import os
 import logging
@@ -15,7 +14,7 @@ VERTEX_LOCATION = os.getenv("VERTEX_LOCATION", "global")
 VERTEX_PROJECT_ID = os.getenv("VERTEX_PROJECT_ID", FIREBASE_PROJECT_ID)
 
 
-async def push_memory_to_vertex(
+def push_memory_to_vertex(
     memory_id: str,
     content: str,
     user_id: str,
@@ -55,20 +54,25 @@ async def push_memory_to_vertex(
             branch="default_branch"
         )
         
-        # Prepare the document
-        document = {
-            "id": memory_id,
-            "structData": {
-                "content": content,
-                "user_id": user_id,
-                "type": memory_type,
-                "created_at": created_at.isoformat(),
-                "memory_id": memory_id
-            }
-        }
+        # Prepare the document (proto-plus style, not ParseDict)
+        from google.protobuf.struct_pb2 import Struct
         
-        # Convert to proto message
-        document_proto = discoveryengine.Document(ParseDict(document, discoveryengine.Document()))
+        struct_data = Struct()
+        struct_data.update({
+            "user_id": user_id,
+            "type": memory_type,
+            "created_at": created_at.isoformat(),
+            "memory_id": memory_id
+        })
+        
+        document_proto = discoveryengine.Document(
+            id=memory_id,
+            content=discoveryengine.Document.Content(
+                mime_type="text/plain",
+                raw_bytes=content.encode('utf-8')
+            ),
+            struct_data=struct_data
+        )
         
         # Create the request
         request = discoveryengine.CreateDocumentRequest(
@@ -89,12 +93,12 @@ async def push_memory_to_vertex(
         raise
 
 
-async def search_memories(
+def search_memories(
     query: str,
     user_id: str,
     max_results: int = 5,
     recency_days: int = 30
-) -> list:
+) -> list[dict]:
     """
     Search for relevant memories in Vertex AI Search.
     
@@ -126,29 +130,44 @@ async def search_memories(
             serving_config="default_config"
         )
         
-        # Build the search request with filters
+        # Build filter for structured data fields (NO FILTER for now - filter post-search)
+        # Vertex AI Search has specific syntax requirements for struct_data filtering
+        # For simplicity, we'll filter by user_id in Python after search
+        
+        # Build the search request without filters
         request = discoveryengine.SearchRequest(
             serving_config=serving_config,
             query=query,
-            page_size=max_results,
-            # Filter by user_id (Vertex AI Search filter syntax)
-            filter=f'user_id: ANY("{user_id}")',
-            # TODO: Add recency filter once we implement date filtering
+            page_size=max_results * 3  # Get more results to filter by user_id
         )
         
         # Execute search
         response = client.search(request=request)
         
-        # Extract results
+        # Extract and filter results
         results = []
         for result in response.results:
-            doc_data = result.document.struct_data
+            doc = result.document
+            doc_data = doc.struct_data
+            
+            # Filter by user_id (post-search)
+            result_user_id = doc_data.get("user_id")
+            if result_user_id != user_id:
+                continue
+            
+            # Get content from document.content field (raw_bytes)
+            content = doc.content.raw_bytes.decode('utf-8') if doc.content and doc.content.raw_bytes else ""
+            
             results.append({
-                "memory_id": doc_data.get("memory_id"),
-                "content": doc_data.get("content"),
+                "memory_id": doc_data.get("memory_id") or doc.id,
+                "content": content,
                 "type": doc_data.get("type"),
                 "created_at": doc_data.get("created_at")
             })
+            
+            # Stop once we have enough results
+            if len(results) >= max_results:
+                break
         
         logger.info(f"Found {len(results)} memories for user {user_id} with query: {query[:50]}...")
         

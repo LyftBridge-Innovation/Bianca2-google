@@ -14,10 +14,10 @@ RECEIVE_SAMPLE_RATE = 24000  # Speaker output sample rate
 CHUNK_SIZE = 1024
 
 # --- Queue Configuration ---
-MIC_QUEUE_MAX_SIZE = 5
+MIC_QUEUE_MAX_SIZE = 50  # Increased to prevent blocking
 
 # --- Tools Configuration ---
 ENABLE_GOOGLE_SEARCH = True  # Enable Google Search tool for grounding
 
 # --- Debug Configuration ---
-DEBUG_LOGGING = True
+DEBUG_LOGGING = False  # Set to True for verbose debugging

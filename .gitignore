@@ -5,6 +5,10 @@
 credentials.json
 get_token.py
 
+# Firebase credentials — never commit
+firebase-credentials.json
+*-firebase-adminsdk-*.json
+
 # Python
 __pycache__/
 *.py[cod]

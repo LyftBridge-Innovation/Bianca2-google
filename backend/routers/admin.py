@@ -181,3 +181,73 @@ def test_summarize_sync(session_id: str):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Summarization failed: {str(e)}")
+
+
+# ── Phase 3C Admin Endpoints ──────────────────────────────────────────────────
+
+from pydantic import BaseModel
+
+class MemoryRetrievalRequest(BaseModel):
+    query: str
+    user_id: str
+    recency_days: int = 30
+
+
+@router.post("/test-memory-retrieval")
+def test_memory_retrieval(request: MemoryRetrievalRequest):
+    """
+    Test memory retrieval without going through chat.
+    Useful for debugging Vertex AI Search queries.
+    """
+    try:
+        from memory_retrieval import retrieve_memories_for_message
+        
+        result = retrieve_memories_for_message(request.query, request.user_id)
+        
+        return {
+            "status": "success",
+            "query": request.query,
+            "user_id": request.user_id,
+            "total_count": result["total_count"],
+            "recency_window_days": result["recency_window_days"],
+            "event_count": len(result["event_memories"]),
+            "entity_count": len(result["entity_memories"]),
+            "event_memories": result["event_memories"],
+            "entity_memories": result["entity_memories"]
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Memory retrieval test failed: {str(e)}")
+
+
+@router.get("/all-memories/{user_id}")
+def get_all_memories(user_id: str, limit: int = 20):
+    """
+    Get all memories for debugging (bypasses indices).
+    Returns both event and entity memories without ordering.
+    """
+    try:
+        # Direct Firestore query without ordering (avoids index requirements)
+        event_docs = fs.db.collection('event_memories')\
+            .where('user_id', '==', user_id)\
+            .limit(limit)\
+            .stream()
+        
+        entity_docs = fs.db.collection('entity_memories')\
+            .where('user_id', '==', user_id)\
+            .limit(limit)\
+            .stream()
+        
+        event_memories = [doc.to_dict() for doc in event_docs]
+        entity_memories = [doc.to_dict() for doc in entity_docs]
+        
+        return {
+            "user_id": user_id,
+            "event_memories": event_memories,
+            "entity_memories": entity_memories,
+            "total_count": len(event_memories) + len(entity_memories)
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch all memories: {str(e)}")
+

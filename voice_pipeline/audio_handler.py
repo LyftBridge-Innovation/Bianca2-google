@@ -56,7 +56,17 @@ class AudioHandler:
                 self.mic_stream.read, CHUNK_SIZE, **kwargs
             )
             audio_data = {"data": data, "mime_type": "audio/pcm"}
-            await self.mic_queue.put(audio_data)
+            
+            # Use try_put to avoid blocking - drop frames if queue is full
+            try:
+                self.mic_queue.put_nowait(audio_data)
+            except asyncio.QueueFull:
+                # Queue is full - drop the oldest frame and add this one
+                try:
+                    self.mic_queue.get_nowait()
+                    self.mic_queue.put_nowait(audio_data)
+                except:
+                    pass  # Silently drop if we can't manage the queue
     
     async def play(self):
         """Continuously play audio from the speaker queue."""
