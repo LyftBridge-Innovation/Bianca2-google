@@ -7,13 +7,14 @@ from routers.admin import router as admin_router
 
 app = FastAPI(title="AI Chief of Staff", version="0.3.0")
 
-# Add CORS middleware for frontend integration
+# Add CORS middleware for frontend integration (Phase 4A: includes SSE support)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # TODO: Restrict in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Type", "Cache-Control"],  # Needed for SSE
 )
 
 app.include_router(tools_test_router)
@@ -23,4 +24,4 @@ app.include_router(admin_router)
 
 @app.get("/")
 def health():
-    return {"status": "ok", "version": "0.3.0", "phase": "3A"}
+    return {"status": "ok", "version": "0.4.0", "phase": "4A - Streaming"}

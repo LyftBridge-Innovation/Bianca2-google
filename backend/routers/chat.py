@@ -1,7 +1,10 @@
 """Chat endpoint for the AI Chief of Staff using Gemini + LangChain."""
 from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, AsyncGenerator
+import json
+import asyncio
 from langchain_google_genai import ChatGoogleGenerativeAI
 from config import GOOGLE_API_KEY, TEST_USER_ID
 from prompts import CHIEF_OF_STAFF_SYSTEM_PROMPT
@@ -214,6 +217,204 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
 
 
+# ── Streaming Chat Endpoint (Phase 4A) ───────────────────────────────────────
+
+def format_sse_event(event_type: str, data: dict) -> str:
+    """Format data as Server-Sent Event."""
+    return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+
+
+async def stream_chat_response(request: ChatRequest, background_tasks: BackgroundTasks) -> AsyncGenerator[str, None]:
+    """
+    Generator function for SSE streaming.
+    Yields events: session, tool_call, token, done
+    """
+    from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Get or create session
+        if request.session_id:
+            session = fs.get_session(request.session_id)
+            if not session:
+                yield format_sse_event("error", {"message": f"Session {request.session_id} not found"})
+                return
+        else:
+            previous_session = fs.get_active_session_for_user(request.user_id)
+            session = Session(user_id=request.user_id, modality="chat")
+            fs.create_session(session)
+            
+            if previous_session:
+                background_tasks.add_task(
+                    summarize_session_sync,
+                    user_id=request.user_id,
+                    session_id=previous_session.session_id
+                )
+        
+        # Send session event first
+        yield format_sse_event("session", {"session_id": session.session_id})
+        
+        # Persist user message
+        user_message = Message(role="user", content=request.message)
+        fs.append_message(session.session_id, user_message)
+        
+        # Build message chain
+        messages = [SystemMessage(content=CHIEF_OF_STAFF_SYSTEM_PROMPT)]
+        
+        for msg in session.messages:
+            if msg.role == "user":
+                messages.append(HumanMessage(content=msg.content))
+            elif msg.role == "assistant":
+                messages.append(AIMessage(content=msg.content))
+        
+        messages.append(HumanMessage(content=request.message))
+        
+        # Phase 3C: Memory retrieval and injection
+        memory_data = retrieve_memories_for_message(
+            user_message=request.message,
+            user_id=request.user_id
+        )
+        
+        if memory_data["total_count"] > 0:
+            memory_block = format_memory_injection(
+                event_memories=memory_data["event_memories"],
+                entity_memories=memory_data["entity_memories"]
+            )
+            original_system_prompt = CHIEF_OF_STAFF_SYSTEM_PROMPT
+            enriched_system_prompt = f"{original_system_prompt}\n\n{memory_block}"
+            messages[0] = SystemMessage(content=enriched_system_prompt)
+            logger.info(f"Injected {memory_data['total_count']} memories")
+        
+        # Track tool calls
+        session_tool_calls = []
+        
+        # Run agentic loop FIRST (tool calls complete before streaming)
+        response = llm.invoke(messages)
+        
+        max_iterations = 5
+        iteration = 0
+        
+        while response.tool_calls and iteration < max_iterations:
+            iteration += 1
+            messages.append(response)
+            
+            for tool_call in response.tool_calls:
+                tool_name = tool_call["name"]
+                tool_args = tool_call["args"]
+                
+                # Emit tool_call event
+                yield format_sse_event("tool_call", {"tool": tool_name, "status": "running"})
+                
+                tool_result = None
+                for tool in ALL_TOOLS:
+                    if tool.name == tool_name:
+                        try:
+                            tool_result = tool.invoke(tool_args)
+                            result_str = str(tool_result)
+                            
+                            tc = ToolCall(
+                                tool_name=tool_name,
+                                parameters=tool_args,
+                                result=result_str
+                            )
+                            session_tool_calls.append(tc)
+                            fs.append_tool_call(session.session_id, tc)
+                            
+                            human_readable = generate_human_readable(tool_name, tool_args, result_str)
+                            action_log = ToolActionLog(
+                                user_id=request.user_id,
+                                session_id=session.session_id,
+                                tool_name=tool_name,
+                                human_readable=human_readable,
+                                parameters=tool_args,
+                                result=result_str,
+                                modality="chat"
+                            )
+                            fs.log_tool_action(action_log)
+                            
+                        except Exception as e:
+                            tool_result = f"Error executing {tool_name}: {str(e)}"
+                        break
+                
+                messages.append(ToolMessage(
+                    content=str(tool_result),
+                    tool_call_id=tool_call["id"]
+                ))
+            
+            response = llm.invoke(messages)
+        
+        # Now stream the final response token by token
+        # Need to reinvoke with streaming to get tokens
+        accumulated_content = ""
+        
+        for chunk in llm.stream(messages):
+            if hasattr(chunk, 'content') and chunk.content:
+                # Handle both string and list content from streaming chunks
+                if isinstance(chunk.content, str):
+                    token = chunk.content
+                elif isinstance(chunk.content, list):
+                    # Extract text from list of content blocks
+                    text_parts = []
+                    for block in chunk.content:
+                        if isinstance(block, dict) and block.get("type") == "text":
+                            text_parts.append(block.get("text", ""))
+                        elif isinstance(block, str):
+                            text_parts.append(block)
+                    token = "".join(text_parts)
+                else:
+                    token = str(chunk.content)
+                
+                if token:  # Only yield non-empty tokens
+                    accumulated_content += token
+                    yield format_sse_event("token", {"token": token})
+        
+        # If no streaming content (shouldn't happen), use the response we have
+        if not accumulated_content:
+            if isinstance(response.content, str):
+                accumulated_content = response.content
+            elif isinstance(response.content, list):
+                text_parts = []
+                for block in response.content:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        text_parts.append(block.get("text", ""))
+                    elif isinstance(block, str):
+                        text_parts.append(block)
+                accumulated_content = " ".join(text_parts) if text_parts else "I've completed your request."
+            else:
+                accumulated_content = str(response.content)
+            
+            # Yield as single token if we had to fall back
+            yield format_sse_event("token", {"token": accumulated_content})
+        
+        # Persist assistant message
+        assistant_message = Message(role="assistant", content=accumulated_content)
+        fs.append_message(session.session_id, assistant_message)
+        
+        # Send done event
+        yield format_sse_event("done", {"session_id": session.session_id})
+        
+    except Exception as e:
+        logger.error(f"Streaming error: {e}")
+        yield format_sse_event("error", {"message": str(e)})
+
+
+@router.post("/stream")
+async def chat_stream(request: ChatRequest, background_tasks: BackgroundTasks):
+    """
+    Streaming chat endpoint using Server-Sent Events (SSE).
+    Returns tokens as they are generated instead of waiting for full response.
+    """
+    return StreamingResponse(
+        stream_chat_response(request, background_tasks),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
+
+
 @router.get("/health")
 def chat_health():
     """Health check for chat service."""
@@ -234,9 +435,42 @@ def get_session(session_id: str):
 
 
 @router.get("/user/{user_id}/sessions")
-def get_user_sessions(user_id: str):
-    """Get active session for a user."""
-    session = fs.get_active_session_for_user(user_id)
-    if not session:
-        return {"active_session": None}
-    return {"active_session": session.model_dump()}
+def get_user_sessions(user_id: str, limit: int = 50):
+    """
+    Get session list for a user with titles for sidebar.
+    Returns sessions sorted by most recent first.
+    """
+    try:
+        # Query sessions for user (no order_by to avoid composite index requirement)
+        sessions_query = fs.db.collection('sessions').where("user_id", "==", user_id).limit(limit * 2)  # Get extra to sort later
+        sessions_docs = sessions_query.stream()
+        
+        session_list = []
+        for doc in sessions_docs:
+            session_data = doc.to_dict()
+            session_id = doc.id
+            
+            # Get first user message for title
+            messages = session_data.get("messages", [])
+            title = "New Chat"
+            for msg in messages:
+                if msg.get("role") == "user":
+                    content = msg.get("content", "")
+                    title = content[:40] + ("..." if len(content) > 40 else "")
+                    break
+            
+            session_list.append({
+                "session_id": session_id,
+                "title": title,
+                "created_at": session_data.get("created_at"),
+                "status": session_data.get("status", "active")
+            })
+        
+        # Sort by created_at in Python (most recent first)
+        session_list.sort(key=lambda x: x.get("created_at") or "", reverse=True)
+        
+        # Apply limit after sorting
+        return session_list[:limit]
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch sessions: {str(e)}")
