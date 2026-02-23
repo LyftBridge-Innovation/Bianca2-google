@@ -10,8 +10,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Use cheap model for summarization (Gemini 1.5 Flash 002)
-SUMMARIZATION_MODEL = "gemini-1.5-flash-002"
+# Use cheap model for summarization (Gemini 1.5 Flash)
+SUMMARIZATION_MODEL = "gemini-2.5-flash"
 
 
 def extract_event_memory(session: Session) -> str:
