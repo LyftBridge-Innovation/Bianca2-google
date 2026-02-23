@@ -21,6 +21,10 @@ VERTEX_DATASTORE_ID = os.getenv("VERTEX_DATASTORE_ID")
 VERTEX_LOCATION = os.getenv("VERTEX_LOCATION", "global")
 VERTEX_PROJECT_ID = os.getenv("VERTEX_PROJECT_ID", FIREBASE_PROJECT_ID)
 
+# Vertex AI Gemini configuration (uses Google Cloud credits)
+GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID", FIREBASE_PROJECT_ID)
+GCP_LOCATION = os.getenv("GCP_LOCATION", "us-central1")  # Gemini models available here
+
 # Memory retrieval configuration (Phase 3C)
 MEMORY_RECENCY_DAYS_DEFAULT = int(os.getenv("MEMORY_RECENCY_DAYS_DEFAULT", "30"))
 MEMORY_RECENCY_DAYS_FALLBACK = int(os.getenv("MEMORY_RECENCY_DAYS_FALLBACK", "90"))

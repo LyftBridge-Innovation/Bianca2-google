@@ -5,8 +5,8 @@ from pydantic import BaseModel
 from typing import Optional, AsyncGenerator
 import json
 import asyncio
-from langchain_google_genai import ChatGoogleGenerativeAI
-from config import GOOGLE_API_KEY, TEST_USER_ID
+from langchain_google_vertexai import ChatVertexAI
+from config import GCP_PROJECT_ID, GCP_LOCATION, TEST_USER_ID
 from prompts import CHIEF_OF_STAFF_SYSTEM_PROMPT
 from langchain_tools import ALL_TOOLS
 from models import FirestoreCollections, Session, Message, ToolCall, ToolActionLog
@@ -16,10 +16,11 @@ from memory_retrieval import retrieve_memories_for_message, format_memory_inject
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
-# Initialize Gemini LLM with tool calling
-llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
-    google_api_key=GOOGLE_API_KEY,
+# Initialize Vertex AI Gemini LLM with tool calling (uses Google Cloud credits)
+llm = ChatVertexAI(
+    model="gemini-2.0-flash-exp",
+    project=GCP_PROJECT_ID,
+    location=GCP_LOCATION,
     temperature=0.7,
 ).bind_tools(ALL_TOOLS)
 
@@ -420,7 +421,7 @@ def chat_health():
     """Health check for chat service."""
     return {
         "status": "ok",
-        "model": "gemini-2.5-flash",
+        "model": "gemini-2.0-flash-exp (Vertex AI)",
         "tools_available": len(ALL_TOOLS),
     }
 

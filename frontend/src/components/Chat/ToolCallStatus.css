@@ -1,0 +1,15 @@
+.tool-call-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 0;
+  color: #8e8ea0;
+  font-size: 14px;
+}
+
+.tool-call-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8e8ea0;
+}

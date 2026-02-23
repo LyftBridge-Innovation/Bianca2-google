@@ -1,0 +1,65 @@
+/* Global Styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Colors */
+  --color-bg-primary: #0f0f0f;
+  --color-bg-secondary: #171717;
+  --color-bg-tertiary: #2a2a2a;
+  --color-text-primary: #ececec;
+  --color-text-secondary: #8e8ea0;
+  --color-border: #2a2a2a;
+  
+  /* Typography */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  /* Base font size */
+  font-size: 16px;
+  line-height: 1.5;
+  
+  /* Color scheme */
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  overflow: hidden;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Remove default button styles */
+button {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* Remove default textarea styles */
+textarea {
+  font-family: inherit;
+}
+
+/* Prevent text selection on interactive elements */
+button, .sidebar-session, .sidebar-logo {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Focus styles */
+button:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #4a9eff;
+  outline-offset: 2px;
+}

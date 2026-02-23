@@ -2,16 +2,16 @@
 import asyncio
 from datetime import datetime, timezone
 from typing import Tuple
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_vertexai import ChatVertexAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from models import Session, EventMemory, EntityMemory, FirestoreCollections
-from config import GOOGLE_API_KEY, ASSISTANT_NAME
+from config import GCP_PROJECT_ID, GCP_LOCATION, ASSISTANT_NAME
 import logging
 
 logger = logging.getLogger(__name__)
 
-# Use cheap model for summarization (Gemini 1.5 Flash)
-SUMMARIZATION_MODEL = "gemini-2.5-flash"
+# Use Vertex AI Gemini for summarization (uses Google Cloud credits)
+SUMMARIZATION_MODEL = "gemini-2.0-flash-exp"
 
 
 def extract_event_memory(session: Session) -> str:
@@ -58,9 +58,10 @@ Extract event-based memories from above."""
     
     try:
         # Use sync LLM call
-        llm = ChatGoogleGenerativeAI(
+        llm = ChatVertexAI(
             model=SUMMARIZATION_MODEL,
-            google_api_key=GOOGLE_API_KEY,
+            project=GCP_PROJECT_ID,
+            location=GCP_LOCATION,
             temperature=0.0,  # Deterministic extraction
         )
         
@@ -116,9 +117,10 @@ Extract entity-based information about people, companies, and topics mentioned."
     
     try:
         # Use async LLM call
-        llm = ChatGoogleGenerativeAI(
+        llm = ChatVertexAI(
             model=SUMMARIZATION_MODEL,
-            google_api_key=GOOGLE_API_KEY,
+            project=GCP_PROJECT_ID,
+            location=GCP_LOCATION,
             temperature=0.0,  # Deterministic extraction
         )
         

@@ -1,13 +1,14 @@
 """Utility functions for Phase 3 memory system."""
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_vertexai import ChatVertexAI
 from langchain_core.messages import HumanMessage
-from config import GOOGLE_API_KEY, ASSISTANT_NAME
+from config import GCP_PROJECT_ID, GCP_LOCATION, ASSISTANT_NAME
 
 
-# Use cheapest model for human_readable generation
-_cheap_llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
-    google_api_key=GOOGLE_API_KEY,
+# Use Vertex AI Gemini for human_readable generation (uses Google Cloud credits)
+_cheap_llm = ChatVertexAI(
+    model="gemini-2.0-flash-exp",
+    project=GCP_PROJECT_ID,
+    location=GCP_LOCATION,
     temperature=0.3,
 )
 
