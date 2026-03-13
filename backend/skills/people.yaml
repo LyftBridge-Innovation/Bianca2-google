@@ -1,0 +1,69 @@
+skill:
+  name: people
+  display_name: Google Contacts
+  description: Search and list contacts from Google People
+  icon: contacts
+
+api:
+  google_api: people.googleapis.com
+  scopes:
+    - https://www.googleapis.com/auth/contacts.readonly
+
+tools:
+  - name: list_contacts
+    description: >
+      List the user's contacts. Returns names, email addresses,
+      and phone numbers.
+    gws_command: ["people", "people", "connections", "list"]
+    parameters:
+      - name: max_results
+        type: integer
+        required: false
+        default: 20
+        description: Maximum number of contacts to return
+    gws_params_map:
+      resourceName: "people/me"
+      pageSize: "{max_results}"
+      personFields: "names,emailAddresses,phoneNumbers,organizations"
+    response_mapping:
+      list_key: connections
+      fields:
+        - source: "names[0].displayName"
+          target: name
+        - source: "emailAddresses[0].value"
+          target: email
+        - source: "phoneNumbers[0].value"
+          target: phone
+        - source: "organizations[0].name"
+          target: organization
+
+  - name: search_contacts
+    description: >
+      Search for contacts by name or email. Returns matching
+      contacts with their details.
+    gws_command: ["people", "people", "searchContacts"]
+    parameters:
+      - name: query
+        type: string
+        required: true
+        description: Name or email to search for
+      - name: max_results
+        type: integer
+        required: false
+        default: 10
+        description: Maximum number of results
+    gws_params_map:
+      query: "{query}"
+      pageSize: "{max_results}"
+      readMask: "names,emailAddresses,phoneNumbers,organizations"
+    response_mapping:
+      list_key: results
+      fields:
+        - source: "person.names[0].displayName"
+          target: name
+        - source: "person.emailAddresses[0].value"
+          target: email
+        - source: "person.phoneNumbers[0].value"
+          target: phone
+        - source: "person.organizations[0].name"
+          target: organization

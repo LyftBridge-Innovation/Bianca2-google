@@ -20,6 +20,10 @@ class User(BaseModel):
     timezone: str = "UTC"
     google_refresh_token: str
     assistant_name: str = "Bianca"
+    enabled_skills: list[str] = Field(
+        default_factory=list,
+        description="Skill names enabled for this user. Empty = all skills."
+    )
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

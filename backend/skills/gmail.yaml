@@ -1,0 +1,72 @@
+skill:
+  name: gmail
+  display_name: Gmail
+  description: Read, send, and draft emails
+  icon: mail
+
+api:
+  google_api: gmail.googleapis.com
+  scopes:
+    - https://www.googleapis.com/auth/gmail.modify
+
+tools:
+  - name: list_recent_emails
+    description: >
+      List recent emails from the user's inbox. Returns email IDs,
+      subjects, senders, dates, and snippets.
+    handler: tools.gmail.list_emails
+    parameters:
+      - name: max_results
+        type: integer
+        required: false
+        default: 10
+        description: Maximum number of emails to return
+
+  - name: get_email_by_id
+    description: >
+      Get the full content of a specific email by its ID. Returns
+      subject, sender, recipient, date, and full body.
+    handler: tools.gmail.get_email
+    parameters:
+      - name: email_id
+        type: string
+        required: true
+        description: The Gmail message ID to retrieve
+
+  - name: draft_email_message
+    description: >
+      Create a draft email without sending it. Use this as the default
+      action. Only use send_email_message after explicit user confirmation.
+    handler: tools.gmail.draft_email
+    parameters:
+      - name: to
+        type: string
+        required: true
+        description: Recipient email address
+      - name: subject
+        type: string
+        required: true
+        description: Email subject line
+      - name: body
+        type: string
+        required: true
+        description: Email body text
+
+  - name: send_email_message
+    description: >
+      Send an email immediately. ONLY use this after explicit user
+      confirmation. Default to draft_email_message first.
+    handler: tools.gmail.send_email
+    parameters:
+      - name: to
+        type: string
+        required: true
+        description: Recipient email address
+      - name: subject
+        type: string
+        required: true
+        description: Email subject line
+      - name: body
+        type: string
+        required: true
+        description: Email body text

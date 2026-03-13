@@ -1,0 +1,50 @@
+skill:
+  name: slides
+  display_name: Google Slides
+  description: Read Google Slides presentations
+  icon: slideshow
+
+api:
+  google_api: slides.googleapis.com
+  scopes:
+    - https://www.googleapis.com/auth/presentations.readonly
+
+tools:
+  - name: get_presentation
+    description: >
+      Get metadata about a Google Slides presentation including
+      title and number of slides.
+    gws_command: ["slides", "presentations", "get"]
+    parameters:
+      - name: presentation_id
+        type: string
+        required: true
+        description: The presentation ID (from the URL)
+    gws_params_map:
+      presentationId: "{presentation_id}"
+    response_mapping:
+      fields:
+        - source: presentationId
+          target: id
+        - source: title
+          target: title
+
+  - name: list_slides
+    description: >
+      List all slides in a presentation with their titles and layout info.
+    gws_command: ["slides", "presentations", "get"]
+    parameters:
+      - name: presentation_id
+        type: string
+        required: true
+        description: The presentation ID
+    gws_params_map:
+      presentationId: "{presentation_id}"
+      fields: "slides.objectId,slides.slideProperties"
+    response_mapping:
+      list_key: slides
+      fields:
+        - source: objectId
+          target: slide_id
+        - source: "slideProperties.layoutObjectId"
+          target: layout

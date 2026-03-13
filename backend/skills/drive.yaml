@@ -1,0 +1,108 @@
+skill:
+  name: drive
+  display_name: Google Drive
+  description: Search, list, and read files in Google Drive
+  icon: folder
+
+api:
+  google_api: drive.googleapis.com
+  scopes:
+    - https://www.googleapis.com/auth/drive.readonly
+
+tools:
+  - name: list_drive_files
+    description: >
+      List files in the user's Google Drive. Returns file names, IDs,
+      MIME types, and last modified dates.
+    gws_command: ["drive", "files", "list"]
+    parameters:
+      - name: max_results
+        type: integer
+        required: false
+        default: 10
+        description: Maximum number of files to return
+      - name: query
+        type: string
+        required: false
+        default: ""
+        description: >
+          Drive search query (e.g. "name contains 'report'"
+          or "mimeType = 'application/pdf'")
+    gws_params_map:
+      pageSize: "{max_results}"
+      q: "{query}"
+    response_mapping:
+      list_key: files
+      fields:
+        - source: id
+          target: id
+        - source: name
+          target: name
+        - source: mimeType
+          target: mime_type
+        - source: modifiedTime
+          target: modified_at
+        - source: webViewLink
+          target: link
+
+  - name: get_drive_file
+    description: >
+      Get metadata and details for a specific file by ID.
+      Returns the file name, type, size, owner, and link.
+    gws_command: ["drive", "files", "get"]
+    parameters:
+      - name: file_id
+        type: string
+        required: true
+        description: The Google Drive file ID
+    gws_params_map:
+      fileId: "{file_id}"
+      fields: "id,name,mimeType,size,modifiedTime,owners,webViewLink,description"
+    response_mapping:
+      fields:
+        - source: id
+          target: id
+        - source: name
+          target: name
+        - source: mimeType
+          target: mime_type
+        - source: size
+          target: size
+        - source: modifiedTime
+          target: modified_at
+        - source: webViewLink
+          target: link
+        - source: "owners[0].displayName"
+          target: owner
+        - source: description
+          target: description
+
+  - name: search_drive_files
+    description: >
+      Search for files in Google Drive by name or content.
+      Returns matching files with names, IDs, and types.
+    gws_command: ["drive", "files", "list"]
+    parameters:
+      - name: search_term
+        type: string
+        required: true
+        description: Text to search for in file names and content
+      - name: max_results
+        type: integer
+        required: false
+        default: 10
+        description: Maximum number of results
+    gws_params_map:
+      pageSize: "{max_results}"
+      q: "fullText contains '{search_term}'"
+    response_mapping:
+      list_key: files
+      fields:
+        - source: id
+          target: id
+        - source: name
+          target: name
+        - source: mimeType
+          target: mime_type
+        - source: modifiedTime
+          target: modified_at

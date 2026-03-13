@@ -1,0 +1,76 @@
+skill:
+  name: sheets
+  display_name: Google Sheets
+  description: Read and write Google Sheets spreadsheets
+  icon: table
+
+api:
+  google_api: sheets.googleapis.com
+  scopes:
+    - https://www.googleapis.com/auth/spreadsheets.readonly
+
+tools:
+  - name: get_spreadsheet
+    description: >
+      Get metadata about a Google Sheets spreadsheet including
+      sheet names and properties.
+    gws_command: ["sheets", "spreadsheets", "get"]
+    parameters:
+      - name: spreadsheet_id
+        type: string
+        required: true
+        description: The spreadsheet ID (from the URL)
+    gws_params_map:
+      spreadsheetId: "{spreadsheet_id}"
+    response_mapping:
+      fields:
+        - source: spreadsheetId
+          target: id
+        - source: "properties.title"
+          target: title
+        - source: spreadsheetUrl
+          target: url
+
+  - name: read_sheet_range
+    description: >
+      Read cell values from a specific range in a spreadsheet.
+      Use A1 notation like 'Sheet1!A1:D10'.
+    gws_command: ["sheets", "spreadsheets", "values", "get"]
+    parameters:
+      - name: spreadsheet_id
+        type: string
+        required: true
+        description: The spreadsheet ID
+      - name: range
+        type: string
+        required: true
+        description: Cell range in A1 notation (e.g. 'Sheet1!A1:D10')
+    gws_params_map:
+      spreadsheetId: "{spreadsheet_id}"
+      range: "{range}"
+    response_mapping:
+      fields:
+        - source: range
+          target: range
+        - source: values
+          target: values
+
+  - name: list_sheet_names
+    description: >
+      List all sheet (tab) names in a spreadsheet.
+    gws_command: ["sheets", "spreadsheets", "get"]
+    parameters:
+      - name: spreadsheet_id
+        type: string
+        required: true
+        description: The spreadsheet ID
+    gws_params_map:
+      spreadsheetId: "{spreadsheet_id}"
+      fields: "sheets.properties.title,sheets.properties.sheetId"
+    response_mapping:
+      list_key: sheets
+      fields:
+        - source: "properties.title"
+          target: name
+        - source: "properties.sheetId"
+          target: sheet_id

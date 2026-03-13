@@ -20,14 +20,22 @@ fs = FirestoreCollections()
 WEB_CLIENT_ID = os.getenv("GOOGLE_WEB_CLIENT_ID")
 WEB_CLIENT_SECRET = os.getenv("GOOGLE_WEB_CLIENT_SECRET")
 
-SCOPES = [
+BASE_SCOPES = [
     "openid",
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/userinfo.profile",
-    "https://www.googleapis.com/auth/gmail.modify",
-    "https://www.googleapis.com/auth/calendar",
-    "https://www.googleapis.com/auth/drive.readonly",
 ]
+
+
+def _build_all_scopes() -> list[str]:
+    """Build deduplicated scope list from base scopes + all YAML skill scopes."""
+    all_scopes = set(BASE_SCOPES)
+    try:
+        from skills_loader import get_all_scopes
+        all_scopes.update(get_all_scopes())
+    except Exception as e:
+        logger.warning("Could not load YAML skill scopes: %s", e)
+    return sorted(all_scopes)
 
 
 class GoogleCallbackRequest(BaseModel):
@@ -64,7 +72,7 @@ async def google_callback(request: GoogleCallbackRequest):
                     "token_uri": "https://oauth2.googleapis.com/token",
                 }
             },
-            scopes=SCOPES,
+            scopes=_build_all_scopes(),
             redirect_uri="postmessage",  # Required for JS popup auth-code flow
         )
 
@@ -123,3 +131,9 @@ async def google_callback(request: GoogleCallbackRequest):
     except Exception as e:
         logger.error("OAuth callback error: %s", e)
         raise HTTPException(status_code=500, detail=f"Authentication failed: {e}")
+
+
+@router.get("/scopes")
+def get_required_scopes():
+    """Returns the OAuth scopes needed for the current skill configuration."""
+    return {"scopes": _build_all_scopes()}

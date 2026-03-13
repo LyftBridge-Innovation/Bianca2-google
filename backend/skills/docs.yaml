@@ -1,0 +1,48 @@
+skill:
+  name: docs
+  display_name: Google Docs
+  description: Read Google Docs documents
+  icon: description
+
+api:
+  google_api: docs.googleapis.com
+  scopes:
+    - https://www.googleapis.com/auth/documents.readonly
+
+tools:
+  - name: get_document
+    description: >
+      Get metadata about a Google Doc including title and last editor.
+    gws_command: ["docs", "documents", "get"]
+    parameters:
+      - name: document_id
+        type: string
+        required: true
+        description: The document ID (from the URL)
+    gws_params_map:
+      documentId: "{document_id}"
+    response_mapping:
+      fields:
+        - source: documentId
+          target: id
+        - source: title
+          target: title
+
+  - name: read_document_text
+    description: >
+      Read the full text content of a Google Doc. Returns the
+      plain text of the document body.
+    gws_command: ["docs", "documents", "get"]
+    parameters:
+      - name: document_id
+        type: string
+        required: true
+        description: The document ID
+    gws_params_map:
+      documentId: "{document_id}"
+    response_mapping:
+      fields:
+        - source: title
+          target: title
+        - source: body
+          target: body

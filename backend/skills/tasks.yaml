@@ -1,0 +1,124 @@
+skill:
+  name: tasks
+  display_name: Google Tasks
+  description: Manage task lists and to-do items
+  icon: check_circle
+
+api:
+  google_api: tasks.googleapis.com
+  scopes:
+    - https://www.googleapis.com/auth/tasks
+
+tools:
+  - name: list_task_lists
+    description: List all task lists for the user.
+    gws_command: ["tasks", "tasklists", "list"]
+    parameters: []
+    gws_params_map: {}
+    response_mapping:
+      list_key: items
+      fields:
+        - source: id
+          target: id
+        - source: title
+          target: title
+        - source: updated
+          target: updated_at
+
+  - name: list_tasks
+    description: >
+      List tasks from a specific task list. Returns task titles,
+      due dates, and completion status.
+    gws_command: ["tasks", "tasks", "list"]
+    parameters:
+      - name: task_list_id
+        type: string
+        required: false
+        default: "@default"
+        description: ID of the task list (use '@default' for the primary list)
+      - name: show_completed
+        type: boolean
+        required: false
+        default: false
+        description: Whether to include completed tasks
+    gws_params_map:
+      tasklist: "{task_list_id}"
+      showCompleted: "{show_completed}"
+    response_mapping:
+      list_key: items
+      fields:
+        - source: id
+          target: id
+        - source: title
+          target: title
+        - source: status
+          target: status
+        - source: due
+          target: due_date
+        - source: notes
+          target: notes
+
+  - name: create_task
+    description: Create a new task in a task list.
+    gws_command: ["tasks", "tasks", "insert"]
+    parameters:
+      - name: title
+        type: string
+        required: true
+        description: Task title
+      - name: notes
+        type: string
+        required: false
+        default: ""
+        description: Additional notes for the task
+      - name: due
+        type: string
+        required: false
+        default: ""
+        description: Due date in ISO 8601 format (e.g. '2026-03-15T00:00:00Z')
+      - name: task_list_id
+        type: string
+        required: false
+        default: "@default"
+        description: Which task list to add the task to
+    gws_params_map:
+      tasklist: "{task_list_id}"
+    gws_body_map:
+      title: "{title}"
+      notes: "{notes}"
+      due: "{due}"
+    response_mapping:
+      fields:
+        - source: id
+          target: id
+        - source: title
+          target: title
+        - source: status
+          target: status
+
+  - name: complete_task
+    description: Mark a task as completed.
+    gws_command: ["tasks", "tasks", "patch"]
+    parameters:
+      - name: task_id
+        type: string
+        required: true
+        description: The task ID to complete
+      - name: task_list_id
+        type: string
+        required: false
+        default: "@default"
+        description: The task list containing this task
+    gws_params_map:
+      tasklist: "{task_list_id}"
+      task: "{task_id}"
+    gws_body_map:
+      status: "completed"
+    response_mapping:
+      fields:
+        - source: id
+          target: id
+        - source: title
+          target: title
+        - source: status
+          target: status

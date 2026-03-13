@@ -51,4 +51,11 @@ export async function deleteSession(sessionId, userId) {
   });
 }
 
+/**
+ * Get required OAuth scopes from backend (built from YAML skill configs).
+ */
+export async function getRequiredScopes() {
+  return apiRequest('/auth/scopes');
+}
+
 export { API_BASE_URL };

@@ -72,6 +72,7 @@ def execute(
             capture_output=True,
             text=True,
             timeout=timeout,
+            env=env,
         )
     except FileNotFoundError:
         raise GWSError(
@@ -88,6 +89,14 @@ def execute(
             if not line.startswith("Using keyring backend:")
         ]
         stderr = "\n".join(stderr_lines).strip()
+        # gws writes API error details to stdout as JSON, not stderr
+        if not stderr and result.stdout.strip():
+            try:
+                import json as _json
+                err_body = _json.loads(result.stdout.strip())
+                stderr = err_body.get("error", {}).get("message", "") or str(err_body)
+            except Exception:
+                stderr = result.stdout.strip()[:200]
         logger.error("gws exit %d: %s", result.returncode, stderr)
         raise GWSError(stderr or f"gws exited with code {result.returncode}",
                        exit_code=result.returncode)

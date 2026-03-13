@@ -1,0 +1,114 @@
+skill:
+  name: calendar
+  display_name: Google Calendar
+  description: Manage calendars and events
+  icon: calendar_today
+
+api:
+  google_api: calendar-json.googleapis.com
+  scopes:
+    - https://www.googleapis.com/auth/calendar
+
+tools:
+  - name: list_upcoming_events
+    description: >
+      List upcoming calendar events for the next N days. Returns event
+      IDs, titles, start/end times, and attendees.
+    handler: tools.calendar.list_events
+    parameters:
+      - name: days_ahead
+        type: integer
+        required: false
+        default: 7
+        description: Number of days ahead to look for events
+
+  - name: get_event_details
+    description: >
+      Get full details of a specific calendar event by its ID. Returns
+      title, description, time, organizer, and attendees.
+    handler: tools.calendar.get_event
+    parameters:
+      - name: event_id
+        type: string
+        required: true
+        description: The Google Calendar event ID
+
+  - name: create_calendar_event
+    description: >
+      Create a new calendar event. Times must be in ISO 8601 format
+      (e.g., '2026-02-20T10:00:00'). Attendees is a list of email addresses.
+    handler: tools.calendar.create_event
+    parameters:
+      - name: title
+        type: string
+        required: true
+        description: Event title
+      - name: start
+        type: string
+        required: true
+        description: Start time in ISO 8601 format
+      - name: end
+        type: string
+        required: true
+        description: End time in ISO 8601 format
+      - name: attendees
+        type: array
+        required: false
+        default: []
+        description: List of attendee email addresses
+      - name: description
+        type: string
+        required: false
+        default: ""
+        description: Event description
+
+  - name: decline_calendar_event
+    description: >
+      Decline a calendar event and optionally send a message to the organizer.
+    handler: tools.calendar.decline_event
+    parameters:
+      - name: event_id
+        type: string
+        required: true
+        description: The event ID to decline
+      - name: message
+        type: string
+        required: false
+        default: ""
+        description: Optional decline message to send to the organizer
+
+  - name: update_calendar_event
+    description: >
+      Update an existing calendar event. Only provide the fields you
+      want to change.
+    handler: tools.calendar.update_event
+    parameters:
+      - name: event_id
+        type: string
+        required: true
+        description: The event ID to update
+      - name: title
+        type: string
+        required: false
+        default: ""
+        description: New event title
+      - name: start
+        type: string
+        required: false
+        default: ""
+        description: New start time in ISO 8601 format
+      - name: end
+        type: string
+        required: false
+        default: ""
+        description: New end time in ISO 8601 format
+      - name: description
+        type: string
+        required: false
+        default: ""
+        description: New event description
+      - name: attendees
+        type: array
+        required: false
+        default: []
+        description: Updated list of attendee email addresses
