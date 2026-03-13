@@ -191,20 +191,6 @@ class GeminiSession:
             except Exception:
                 pass
 
-        # ── 1. Filler phrase ──────────────────────────────────────────────────
-        # Sent before tool execution so Gemini begins speaking while we wait.
-        # Wrapped in try/except — if the Live API rejects mid-turn sends, we
-        # degrade gracefully (system prompt still instructs natural narration).
-        if self.dispatcher and self.dispatcher.is_known_tool(function_name):
-            filler = self.dispatcher.get_filler_phrase(function_name)
-            try:
-                await self.send_text(filler, end_of_turn=True)
-                if DEBUG_LOGGING:
-                    print(f"💬 Filler sent: {filler}")
-            except Exception as e:
-                if DEBUG_LOGGING:
-                    print(f"⚠️ Filler send skipped ({e})")
-
         # ── 2. Execute tool ───────────────────────────────────────────────────
         result = ""
         try:
