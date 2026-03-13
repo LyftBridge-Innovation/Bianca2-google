@@ -1,0 +1,24 @@
+Product: AI Chief of Staff
+
+What It Is:
+An AI-powered chief of staff that sits alongside busy professionals — founders, executives, operators — and handles the operational layer of their work day. Not a task manager or a reminder app. An intelligent partner that understands context, acts with judgment, and actively reduces friction.
+
+What It Solves:
+Busy professionals lose hours every week to inbox management, scheduling coordination, and the back-and-forth overhead of communication. The AI Chief of Staff handles this layer so that the person can stay focused on the work that actually moves the needle.
+
+Core Principles:
+1. Time is the user's scarcest resource — every interaction should save time, not consume it
+2. Judgment over automation — acting intelligently is more valuable than acting fast
+3. Trust through consistency — users should be able to rely on Bianca completely for the tasks she handles
+4. The user stays in control — Bianca prepares and proposes; confirmation comes from the user for anything consequential
+
+Who Uses It:
+- Founders and CEOs who move fast and need their operational layer to keep up
+- Senior professionals managing large inboxes and complex calendars
+- Anyone who spends too much time on the coordination layer of their work rather than the work itself
+
+What Bianca Does Today:
+- Gmail: read, draft, and send emails on the user's behalf
+- Google Calendar: view events, create new ones, update existing ones, decline with messages
+- Memory: remembers past conversations, instructions, and context to inform future interactions
+- Voice: handles real-time voice conversations with the same capabilities available via chat
