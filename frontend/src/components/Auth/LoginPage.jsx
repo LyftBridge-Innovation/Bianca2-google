@@ -56,6 +56,7 @@ export function LoginPage() {
 
   return (
     <div className="login-page">
+      <div className="login-ambient-gold" />
       <div className="login-content">
         <h1 className="login-title">Bianca</h1>
         <p className="login-subtitle">Your AI Chief of Staff</p>

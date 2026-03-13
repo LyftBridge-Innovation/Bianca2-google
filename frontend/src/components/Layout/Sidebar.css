@@ -1,11 +1,31 @@
 .sidebar {
   width: 256px;
   height: 100vh;
-  background: var(--bg-surface);
-  border-right: 1px solid var(--border-subtle);
+  background: linear-gradient(180deg, #0c0c1c 0%, #09091a 100%);
+  border-right: none;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  position: relative;
+}
+
+/* Gradient right border — violet top → gold bottom */
+.sidebar::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    rgba(124, 106, 247, 0.30) 0%,
+    rgba(124, 106, 247, 0.12) 20%,
+    rgba(255, 255, 255, 0.04) 50%,
+    rgba(232, 184, 109, 0.12) 85%,
+    rgba(232, 184, 109, 0.22) 100%
+  );
+  pointer-events: none;
 }
 
 /* ─── Header ─────────────────────────────────────────────────────────────── */
@@ -18,9 +38,14 @@
   font-family: var(--font-display);
   font-size: 28px;
   font-weight: 500;
-  color: var(--text-primary);
   letter-spacing: 0.04em;
   margin: 0 0 18px 4px;
+  background: var(--gradient-text-gold);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 16px rgba(232, 184, 109, 0.18));
+  text-rendering: optimizeLegibility;
 }
 
 .sidebar-new-chat {
@@ -38,13 +63,14 @@
   font-weight: 400;
   letter-spacing: 0.02em;
   transition: border-color var(--transition-base), color var(--transition-base),
-              background var(--transition-base);
+              background var(--transition-base), box-shadow var(--transition-base);
 }
 
 .sidebar-new-chat:hover {
-  border-color: var(--accent);
+  border-color: rgba(124, 106, 247, 0.45);
   color: var(--accent);
-  background: var(--accent-glow);
+  background: rgba(124, 106, 247, 0.08);
+  box-shadow: 0 0 20px rgba(124, 106, 247, 0.08), inset 0 0 10px rgba(124, 106, 247, 0.04);
 }
 
 /* ─── Sessions list ──────────────────────────────────────────────────────── */
@@ -61,7 +87,7 @@
 .sidebar-group-title {
   font-size: 10px;
   font-weight: 500;
-  color: var(--text-muted);
+  color: rgba(120, 120, 160, 0.6);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   padding: 4px 12px 8px;
@@ -79,23 +105,24 @@
 }
 
 .sidebar-session:hover {
-  background: var(--bg-hover);
+  background: var(--gradient-hover);
 }
 
 .sidebar-session.active {
-  background: var(--bg-active);
+  background: var(--gradient-active);
 }
 
-/* Gold left-edge accent on active session */
+/* Violet→blue gradient accent bar on active session */
 .sidebar-session.active::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 22%;
-  height: 56%;
-  width: 2px;
-  background: var(--accent);
+  top: 18%;
+  height: 64%;
+  width: 3px;
+  background: linear-gradient(180deg, #7c6af7 0%, #4dc8f5 100%);
   border-radius: 0 2px 2px 0;
+  box-shadow: 0 0 8px rgba(124, 106, 247, 0.5);
 }
 
 .sidebar-session-button {
@@ -115,6 +142,10 @@
 .sidebar-session:hover .sidebar-session-button,
 .sidebar-session.active .sidebar-session-button {
   color: var(--text-primary);
+}
+
+.sidebar-session.active .sidebar-session-button {
+  text-shadow: 0 0 16px rgba(124, 106, 247, 0.25);
 }
 
 .sidebar-session-title {
@@ -158,5 +189,5 @@
 /* ─── Scrollbar ──────────────────────────────────────────────────────────── */
 .sidebar-sessions::-webkit-scrollbar { width: 3px; }
 .sidebar-sessions::-webkit-scrollbar-track { background: transparent; }
-.sidebar-sessions::-webkit-scrollbar-thumb { background: var(--border-muted); border-radius: 2px; }
-.sidebar-sessions::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+.sidebar-sessions::-webkit-scrollbar-thumb { background: rgba(124, 106, 247, 0.25); border-radius: 2px; }
+.sidebar-sessions::-webkit-scrollbar-thumb:hover { background: rgba(124, 106, 247, 0.4); }

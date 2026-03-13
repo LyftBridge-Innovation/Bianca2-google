@@ -4,7 +4,8 @@ export function EmptyState() {
   return (
     <div className="empty-state">
       <div className="empty-state-content">
-        <h2 className="empty-state-title">Welcome to Bianca</h2>
+        <div className="empty-state-mark">B</div>
+        <h2 className="empty-state-title">Bianca</h2>
         <p className="empty-state-subtitle">Your AI Chief of Staff</p>
         <div className="empty-state-suggestions">
           <p className="empty-state-prompt">Try asking me to:</p>

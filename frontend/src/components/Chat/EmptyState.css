@@ -5,11 +5,53 @@
   align-items: center;
   justify-content: center;
   padding: 40px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ambient orb behind the content */
+.empty-state::before {
+  content: '';
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 480px;
+  height: 480px;
+  background: radial-gradient(
+    circle,
+    rgba(124, 106, 247, 0.06) 0%,
+    rgba(77, 200, 245, 0.03) 50%,
+    transparent 70%
+  );
+  border-radius: 50%;
+  pointer-events: none;
 }
 
 .empty-state-content {
   max-width: 580px;
   text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── Brand mark ─────────────────────────────────────────────────────────── */
+.empty-state-mark {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--gradient-accent);
+  color: #ffffff;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24px;
+  box-shadow: 0 0 32px rgba(124, 106, 247, 0.35), 0 0 64px rgba(124, 106, 247, 0.12);
+  animation: staggerIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* ─── Hero title ─────────────────────────────────────────────────────────── */
@@ -17,10 +59,14 @@
   font-family: var(--font-display);
   font-size: 64px;
   font-weight: 400;
-  color: var(--text-primary);
+  background: var(--gradient-text-gold);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 28px rgba(232, 184, 109, 0.22));
   letter-spacing: 0.04em;
   margin: 0 0 12px 0;
-  animation: staggerIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: staggerIn 0.6s 0.05s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .empty-state-subtitle {
@@ -30,12 +76,12 @@
   margin: 0 0 52px 0;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  animation: staggerIn 0.6s 0.08s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: staggerIn 0.6s 0.12s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* ─── Suggestions ────────────────────────────────────────────────────────── */
 .empty-state-suggestions {
-  animation: staggerIn 0.6s 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: staggerIn 0.6s 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .empty-state-prompt {
@@ -60,14 +106,17 @@
   font-size: 13.5px;
   color: var(--text-secondary);
   padding: 14px 18px;
-  background: var(--bg-surface);
+  background: var(--bg-glass);
+  backdrop-filter: var(--glass-backdrop);
+  -webkit-backdrop-filter: var(--glass-backdrop);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   text-align: left;
   cursor: default;
   line-height: 1.5;
   transition: border-color var(--transition-base), background var(--transition-base),
-              color var(--transition-base), transform var(--transition-base);
+              color var(--transition-base), transform var(--transition-base),
+              box-shadow var(--transition-base);
 }
 
 .empty-state-list li:hover {
@@ -75,6 +124,7 @@
   background: var(--accent-glow);
   color: var(--text-primary);
   transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2), 0 0 16px rgba(124, 106, 247, 0.06);
 }
 
 /* ─── Stagger animation ──────────────────────────────────────────────────── */

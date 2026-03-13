@@ -1,5 +1,5 @@
 .chat-input {
-  padding: 10px 24px 22px;
+  padding: 10px 24px 24px;
   border-top: none;
 }
 
@@ -8,16 +8,22 @@
   display: flex;
   align-items: flex-end;
   gap: 10px;
-  background: var(--bg-elevated);
+  background: rgba(17, 17, 30, 0.78);
+  backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid var(--border-muted);
   border-radius: var(--radius-xl);
   padding: 12px 14px 12px 20px;
   transition: border-color var(--transition-base), box-shadow var(--transition-base);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .chat-input-container:focus-within {
-  border-color: var(--accent-focus);
-  box-shadow: 0 0 0 3px var(--accent-halo), 0 4px 24px var(--shadow-dark);
+  border-color: rgba(124, 106, 247, 0.50);
+  box-shadow:
+    0 0 0 3px rgba(124, 106, 247, 0.10),
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 0 30px rgba(124, 106, 247, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 /* ─── Textarea ───────────────────────────────────────────────────────────── */
@@ -43,8 +49,7 @@
 }
 
 .chat-input-textarea::placeholder {
-  color: var(--text-muted);
-  font-style: italic;
+  color: rgba(120, 120, 160, 0.55);
 }
 
 .chat-input-textarea:disabled {
@@ -64,14 +69,21 @@
   color: var(--text-muted);
   border-radius: 50%;
   transition: color var(--transition-base), background var(--transition-base),
-              transform 0.1s ease;
+              box-shadow var(--transition-base), transform 0.1s ease;
   flex-shrink: 0;
   padding: 0;
 }
 
-.chat-input-send:hover:not(:disabled) {
+/* Ready state — has text to send */
+.chat-input-send:not(:disabled) {
   color: var(--accent);
-  background: var(--accent-dim);
+  background: rgba(124, 106, 247, 0.10);
+}
+
+.chat-input-send:not(:disabled):hover {
+  background: var(--gradient-accent);
+  color: #ffffff;
+  box-shadow: 0 4px 16px rgba(124, 106, 247, 0.40), 0 0 20px rgba(77, 200, 245, 0.15);
 }
 
 .chat-input-send:disabled {
@@ -80,5 +92,6 @@
 }
 
 .chat-input-send:active:not(:disabled) {
-  transform: scale(0.88);
+  transform: scale(0.87);
+  box-shadow: 0 2px 8px rgba(124, 106, 247, 0.30);
 }

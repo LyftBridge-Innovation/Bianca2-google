@@ -37,15 +37,24 @@ export function Message({ message, isStreaming = false }) {
     }
   }, [message, isStreaming, isUser]);
 
+  if (isUser) {
+    return (
+      <div className="message message-user">
+        <div className="message-content">
+          {displayedContent}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={`message ${isUser ? 'message-user' : 'message-assistant'}`}>
-      <div className="message-content">
-        {isUser ? (
-          displayedContent
-        ) : (
+    <div className="message message-assistant">
+      <div className="message-assistant-inner">
+        <div className="message-avatar">B</div>
+        <div className="message-content">
           <ReactMarkdown>{displayedContent}</ReactMarkdown>
-        )}
-        {isStreaming && !isUser && <span className="typing-cursor">▊</span>}
+          {isStreaming && <span className="typing-cursor">▊</span>}
+        </div>
       </div>
     </div>
   );

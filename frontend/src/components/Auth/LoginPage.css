@@ -9,38 +9,60 @@
   overflow: hidden;
 }
 
-/* Ambient gold glow — top center */
+/* Ambient violet glow — top center */
 .login-page::before {
   content: '';
   position: absolute;
   top: -15%;
   left: 50%;
   transform: translateX(-50%);
-  width: 700px;
-  height: 700px;
-  background: radial-gradient(circle, var(--accent-ambient) 0%, transparent 65%);
+  width: 850px;
+  height: 850px;
+  background: radial-gradient(circle, rgba(124, 106, 247, 0.14) 0%, transparent 65%);
   pointer-events: none;
 }
 
-/* Ambient cool glow — bottom right */
+/* Ambient blue glow — bottom right */
 .login-page::after {
   content: '';
   position: absolute;
   bottom: -5%;
   right: 5%;
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, var(--accent-cool) 0%, transparent 65%);
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(77, 200, 245, 0.09) 0%, transparent 65%);
   pointer-events: none;
+}
+
+/* ─── Gold ambient orb ───────────────────────────────────────────────────── */
+.login-ambient-gold {
+  position: absolute;
+  top: 60%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(circle, rgba(232, 184, 109, 0.07) 0%, transparent 65%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* ─── Content ────────────────────────────────────────────────────────────── */
 .login-content {
   text-align: center;
-  max-width: 400px;
-  padding: 60px 40px;
+  max-width: 420px;
+  width: 100%;
+  padding: 64px 52px;
   position: relative;
   z-index: 1;
+  background: rgba(11, 11, 24, 0.65);
+  backdrop-filter: blur(40px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-xl);
+  box-shadow:
+    0 32px 80px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(124, 106, 247, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
   animation: loginIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
@@ -48,16 +70,21 @@
   font-family: var(--font-display);
   font-size: 80px;
   font-weight: 400;
-  color: var(--text-primary);
-  margin: 0 0 14px 0;
   letter-spacing: 0.06em;
   line-height: 1;
+  margin: 0 0 14px 0;
+  background: var(--gradient-text-gold);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 22px rgba(232, 184, 109, 0.20));
+  text-rendering: optimizeLegibility;
 }
 
 .login-subtitle {
   font-size: 11px;
   font-weight: 500;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   margin: 0 0 60px 0;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -77,17 +104,19 @@
   font-size: 14px;
   font-weight: 500;
   color: var(--text-primary);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-muted);
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
   letter-spacing: 0.02em;
+  transition: background 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, color 0.22s ease;
 }
 
 .google-signin-btn:hover {
-  background: var(--bg-hover);
-  border-color: var(--border-strong);
+  background: rgba(124, 106, 247, 0.08);
+  border-color: rgba(124, 106, 247, 0.40);
+  box-shadow: 0 0 24px rgba(124, 106, 247, 0.12);
+  color: var(--text-primary);
 }
 
 .google-signin-btn:disabled {
@@ -100,7 +129,7 @@
 }
 
 .login-error {
-  color: #ef4444;
+  color: var(--color-danger);
   font-size: 13px;
   margin-top: 20px;
   letter-spacing: 0.01em;
@@ -108,7 +137,7 @@
 
 .login-permissions-note {
   font-size: 11px;
-  color: var(--text-muted);
+  color: rgba(120, 120, 160, 0.65);
   margin-top: 16px;
   letter-spacing: 0.04em;
 }
@@ -117,10 +146,10 @@
 @keyframes loginIn {
   from {
     opacity: 0;
-    transform: translateY(28px);
+    transform: translateY(28px) scale(0.97);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
