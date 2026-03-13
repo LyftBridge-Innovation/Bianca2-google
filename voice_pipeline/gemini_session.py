@@ -146,7 +146,8 @@ class GeminiSession:
                         for fc in response.tool_call.function_calls:
                             fname = fc.name
                             fparams = dict(fc.args) if fc.args else {}
-                            await self._handle_tool_call(fname, fparams)
+                            fcall_id = getattr(fc, "id", None)
+                            await self._handle_tool_call(fname, fparams, fcall_id)
 
                     # ── Audio / text from model turn ──────────────────────────────
                     if response.server_content:
@@ -197,15 +198,15 @@ class GeminiSession:
 
     # ── Tool call handler ─────────────────────────────────────────────────────
 
-    async def _handle_tool_call(self, function_name: str, parameters: dict):
+    async def _handle_tool_call(self, function_name: str, parameters: dict, call_id: str = None):
         """
         Handle a single Gemini tool call:
-          1. Send filler phrase as text → Gemini speaks it while tool executes
-          2. Execute the tool via dispatcher
-          3. Inject result via send_tool_response → Gemini formulates spoken answer
+          1. Execute the tool via dispatcher
+          2. Inject result via send_tool_response (must include call_id) → Gemini speaks answer
         """
-        if DEBUG_LOGGING:
-            print(f"🔧 Tool call: {function_name}  params={parameters}")
+        import logging
+        _log = logging.getLogger(__name__)
+        _log.info("Tool call: %s  id=%s  params=%s", function_name, call_id, parameters)
 
         # Fire optional UI callback (Phase 5B tool call panel)
         if self.on_tool_call:
@@ -214,33 +215,28 @@ class GeminiSession:
             except Exception:
                 pass
 
-        # ── 2. Execute tool ───────────────────────────────────────────────────
+        # ── Execute tool ──────────────────────────────────────────────────────
         result = ""
         try:
             if self.dispatcher and self.dispatcher.is_known_tool(function_name):
                 result = await self.dispatcher.dispatch(function_name, parameters)
             else:
                 result = f"Tool '{function_name}' is not available."
-                if DEBUG_LOGGING:
-                    print(f"⚠️ Unknown tool requested: {function_name}")
+                _log.warning("Unknown tool requested: %s", function_name)
         except Exception as e:
-            result = f"I encountered an error while trying to run {function_name}: {str(e)}"
-            if DEBUG_LOGGING:
-                print(f"❌ Tool error ({function_name}): {e}")
+            result = f"Error running {function_name}: {str(e)}"
+            _log.error("Tool execution error (%s): %s", function_name, e, exc_info=True)
 
-        if DEBUG_LOGGING:
-            print(f"✅ Tool result ({function_name}): {result[:120]}")
+        _log.info("Tool result (%s): %s", function_name, str(result)[:200])
 
-        # ── 3. Inject result back to Gemini ───────────────────────────────────
+        # ── Inject result back to Gemini (call_id MUST be echoed) ────────────
         try:
-            await self.session.send_tool_response(
-                function_responses=[
-                    types.FunctionResponse(
-                        name=function_name,
-                        response={"result": result},
-                    )
-                ]
+            fr = types.FunctionResponse(
+                name=function_name,
+                response={"result": result},
             )
+            if call_id:
+                fr.id = call_id
+            await self.session.send_tool_response(function_responses=[fr])
         except Exception as e:
-            if DEBUG_LOGGING:
-                print(f"❌ Tool response injection failed ({function_name}): {e}")
+            _log.error("send_tool_response failed (%s): %s", function_name, e, exc_info=True)
