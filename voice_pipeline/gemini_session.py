@@ -134,39 +134,62 @@ class GeminiSession:
           response.server_content   → audio to speaker queue, text to transcript callback
           executable_code / result  → Google Search logging
         """
-        while True:
-            turn = self.session.receive()
-            async for response in turn:
+        import logging
+        _log = logging.getLogger(__name__)
+        try:
+            while True:
+                turn = self.session.receive()
+                async for response in turn:
 
-                # ── Custom function call from Gemini ──────────────────────────
-                if response.tool_call:
-                    for fc in response.tool_call.function_calls:
-                        fname = fc.name
-                        fparams = dict(fc.args) if fc.args else {}
-                        # Await inline: Gemini is paused waiting for function response.
-                        # No audio arrives during tool execution so blocking is safe.
-                        await self._handle_tool_call(fname, fparams)
+                    # ── Custom function call from Gemini ──────────────────────────
+                    if response.tool_call:
+                        for fc in response.tool_call.function_calls:
+                            fname = fc.name
+                            fparams = dict(fc.args) if fc.args else {}
+                            await self._handle_tool_call(fname, fparams)
 
-                # ── Audio / text from model turn ──────────────────────────────
-                if response.server_content and response.server_content.model_turn:
-                    for part in response.server_content.model_turn.parts:
+                    # ── Audio / text from model turn ──────────────────────────────
+                    if response.server_content:
+                        sc = response.server_content
 
-                        # Audio bytes → speaker queue
-                        if part.inline_data and isinstance(part.inline_data.data, bytes):
-                            audio_handler.queue_audio_for_playback(part.inline_data.data)
+                        # Native audio preview: audio in model_turn parts
+                        if sc.model_turn:
+                            for part in sc.model_turn.parts:
+                                if part.inline_data and isinstance(part.inline_data.data, bytes):
+                                    audio_handler.queue_audio_for_playback(part.inline_data.data)
+                                if part.text and self.on_transcript:
+                                    await self.on_transcript("assistant", part.text)
+                                if part.executable_code is not None and DEBUG_LOGGING:
+                                    print(f"🔍 Search: {part.executable_code.code[:80]}")
+                                if part.code_execution_result is not None and DEBUG_LOGGING:
+                                    print(f"🔍 Search result: {part.code_execution_result.output[:80]}")
 
-                        # Text → transcript callback (used by 5B WebRTC test UI)
-                        if part.text and self.on_transcript:
-                            await self.on_transcript("assistant", part.text)
+                        # Native audio preview: output_transcription (spoken text from model)
+                        if hasattr(sc, "output_transcription") and sc.output_transcription:
+                            t = sc.output_transcription
+                            text = t.text if hasattr(t, "text") else str(t)
+                            if text and self.on_transcript:
+                                await self.on_transcript("assistant", text)
 
-                        # Google Search built-in tool (no dispatch needed — model handles it)
-                        if part.executable_code is not None and DEBUG_LOGGING:
-                            print(f"🔍 Search: {part.executable_code.code[:80]}")
-                        if part.code_execution_result is not None and DEBUG_LOGGING:
-                            print(f"🔍 Search result: {part.code_execution_result.output[:80]}")
+                        # Native audio preview: input_transcription (user speech → text)
+                        if hasattr(sc, "input_transcription") and sc.input_transcription:
+                            t = sc.input_transcription
+                            text = t.text if hasattr(t, "text") else str(t)
+                            if text and self.on_transcript:
+                                await self.on_transcript("user", text)
 
-            if DEBUG_LOGGING:
-                print("✅ Turn complete")
+                if DEBUG_LOGGING:
+                    print("✅ Turn complete")
+
+        except asyncio.CancelledError:
+            pass  # Normal shutdown
+        except Exception as e:
+            _log.error("receive_loop crashed: %s", e, exc_info=True)
+            if self.on_transcript:
+                try:
+                    await self.on_transcript("assistant", f"[Voice error: {e}]")
+                except Exception:
+                    pass
 
     async def receive_audio_stream(self, audio_handler):
         """Alias for receive_loop() — backward compatible with main.py."""
