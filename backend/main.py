@@ -1,7 +1,6 @@
 """FastAPI entry point for the AI Chief of Staff backend."""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers.tools_test import router as tools_test_router
 from routers.chat import router as chat_router
 from routers.admin import router as admin_router
 from routers.voice import router as voice_router
@@ -19,7 +18,6 @@ app.add_middleware(
     expose_headers=["Content-Type", "Cache-Control"],  # Needed for SSE
 )
 
-app.include_router(tools_test_router)
 app.include_router(chat_router)
 app.include_router(admin_router)
 app.include_router(voice_router)
