@@ -290,10 +290,16 @@ def _build_gemini_declaration(tool_def: dict):
     required = []
 
     for p in params:
-        properties[p["name"]] = gemini_types.Schema(
-            type=_gemini_type_map.get(p["type"], gemini_types.Type.STRING),
-            description=p.get("description", ""),
-        )
+        ptype = _gemini_type_map.get(p["type"], gemini_types.Type.STRING)
+        schema_kwargs = {
+            "type": ptype,
+            "description": p.get("description", ""),
+        }
+        # Gemini requires 'items' for array types
+        if ptype == gemini_types.Type.ARRAY:
+            items_type = _gemini_type_map.get(p.get("items_type", "string"), gemini_types.Type.STRING)
+            schema_kwargs["items"] = gemini_types.Schema(type=items_type)
+        properties[p["name"]] = gemini_types.Schema(**schema_kwargs)
         if p.get("required", False):
             required.append(p["name"])
 
