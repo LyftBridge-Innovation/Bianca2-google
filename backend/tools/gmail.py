@@ -1,31 +1,40 @@
-"""Gmail tools — read, send, and draft emails on behalf of a user."""
+"""Gmail tools — read, send, and draft emails via gws CLI.
+
+Function signatures are identical to the original google-api-python-client
+implementation so langchain_tools.py and voice_pipeline/tool_dispatcher.py
+work without any changes.
+"""
 import base64
-from email.mime.text import MIMEText
+import json
+import logging
 from fastapi import HTTPException
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
-from tools.google_auth import GoogleAuthManager
+from tools.gws_client import execute, GWSError
+from token_manager import get_access_token
 
-auth_manager = GoogleAuthManager()
-
-
-def _service(user_id: str):
-    creds = auth_manager.get_credentials(user_id)
-    return build("gmail", "v1", credentials=creds)
+logger = logging.getLogger(__name__)
 
 
 def list_emails(user_id: str, max_results: int = 10) -> list[dict]:
     """Returns recent emails: id, subject, sender, date, snippet."""
     try:
-        service = _service(user_id)
-        result = service.users().messages().list(userId="me", maxResults=max_results).execute()
+        token = get_access_token(user_id)
+        result = execute([
+            "gmail", "users", "messages", "list",
+            "--params", json.dumps({"userId": "me", "maxResults": max_results}),
+        ], access_token=token)
         messages = result.get("messages", [])
 
         emails = []
         for msg in messages:
-            m = service.users().messages().get(userId="me", id=msg["id"], format="metadata",
-                metadataHeaders=["Subject", "From", "Date"]).execute()
-            headers = {h["name"]: h["value"] for h in m["payload"]["headers"]}
+            m = execute([
+                "gmail", "users", "messages", "get",
+                "--params", json.dumps({
+                    "userId": "me",
+                    "id": msg["id"],
+                    "format": "metadata",
+                }),
+            ], access_token=token)
+            headers = {h["name"]: h["value"] for h in m.get("payload", {}).get("headers", [])}
             emails.append({
                 "id": m["id"],
                 "subject": headers.get("Subject", ""),
@@ -34,16 +43,20 @@ def list_emails(user_id: str, max_results: int = 10) -> list[dict]:
                 "snippet": m.get("snippet", ""),
             })
         return emails
-    except HttpError as e:
-        raise HTTPException(status_code=e.status_code, detail=str(e))
+    except GWSError as e:
+        logger.error("list_emails failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 def get_email(user_id: str, email_id: str) -> dict:
     """Returns full email body and metadata for a given email ID."""
     try:
-        service = _service(user_id)
-        m = service.users().messages().get(userId="me", id=email_id, format="full").execute()
-        headers = {h["name"]: h["value"] for h in m["payload"]["headers"]}
+        token = get_access_token(user_id)
+        m = execute([
+            "gmail", "users", "messages", "get",
+            "--params", json.dumps({"userId": "me", "id": email_id, "format": "full"}),
+        ], access_token=token)
+        headers = {h["name"]: h["value"] for h in m.get("payload", {}).get("headers", [])}
 
         body = ""
         payload = m["payload"]
@@ -63,35 +76,45 @@ def get_email(user_id: str, email_id: str) -> dict:
             "date": headers.get("Date", ""),
             "body": body,
         }
-    except HttpError as e:
-        if e.status_code == 404:
-            raise HTTPException(status_code=404, detail=f"Email {email_id} not found.")
-        raise HTTPException(status_code=e.status_code, detail=str(e))
+    except GWSError as e:
+        logger.error("get_email failed: %s", e)
+        status = 404 if "not found" in str(e).lower() else 500
+        raise HTTPException(status_code=status, detail=str(e))
 
 
 def send_email(user_id: str, to: str, subject: str, body: str) -> dict:
     """Sends an email on behalf of the user. Only call when user explicitly confirms."""
     try:
-        service = _service(user_id)
-        message = MIMEText(body)
-        message["to"] = to
-        message["subject"] = subject
-        raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
-        sent = service.users().messages().send(userId="me", body={"raw": raw}).execute()
-        return {"id": sent["id"], "status": "sent"}
-    except HttpError as e:
-        raise HTTPException(status_code=e.status_code, detail=str(e))
+        token = get_access_token(user_id)
+        result = execute([
+            "gmail", "+send",
+            "--to", to,
+            "--subject", subject,
+            "--body", body,
+        ], access_token=token)
+        return {"id": result.get("id", ""), "status": "sent"}
+    except GWSError as e:
+        logger.error("send_email failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 def draft_email(user_id: str, to: str, subject: str, body: str) -> dict:
     """Saves an email as a draft. Default action — does NOT send."""
     try:
-        service = _service(user_id)
+        token = get_access_token(user_id)
+        from email.mime.text import MIMEText
+
         message = MIMEText(body)
         message["to"] = to
         message["subject"] = subject
         raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
-        draft = service.users().drafts().create(userId="me", body={"message": {"raw": raw}}).execute()
-        return {"id": draft["id"], "status": "drafted"}
-    except HttpError as e:
-        raise HTTPException(status_code=e.status_code, detail=str(e))
+
+        result = execute([
+            "gmail", "users", "drafts", "create",
+            "--params", json.dumps({"userId": "me"}),
+            "--json", json.dumps({"message": {"raw": raw}}),
+        ], access_token=token)
+        return {"id": result.get("id", ""), "status": "drafted"}
+    except GWSError as e:
+        logger.error("draft_email failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))

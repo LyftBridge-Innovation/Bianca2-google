@@ -8,31 +8,42 @@
 }
 
 .empty-state-content {
-  max-width: 600px;
+  max-width: 580px;
   text-align: center;
-  animation: fadeIn 0.4s ease-in-out;
 }
 
+/* ─── Hero title ─────────────────────────────────────────────────────────── */
 .empty-state-title {
-  font-size: 32px;
-  font-weight: 600;
-  color: #ececec;
-  margin: 0 0 8px 0;
+  font-family: var(--font-display);
+  font-size: 64px;
+  font-weight: 400;
+  color: var(--text-primary);
+  letter-spacing: 0.04em;
+  margin: 0 0 12px 0;
+  animation: staggerIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .empty-state-subtitle {
-  font-size: 18px;
-  color: #8e8ea0;
-  margin: 0 0 48px 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin: 0 0 52px 0;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  animation: staggerIn 0.6s 0.08s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* ─── Suggestions ────────────────────────────────────────────────────────── */
 .empty-state-suggestions {
-  margin-top: 32px;
+  animation: staggerIn 0.6s 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .empty-state-prompt {
-  font-size: 15px;
-  color: #ececec;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   margin: 0 0 16px 0;
 }
 
@@ -40,30 +51,37 @@
   list-style: none;
   padding: 0;
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 
 .empty-state-list li {
-  font-size: 14px;
-  color: #8e8ea0;
-  padding: 12px 20px;
-  background-color: #2a2a2a;
-  border-radius: 12px;
-  transition: all 0.2s;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  padding: 14px 18px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  text-align: left;
+  cursor: default;
+  line-height: 1.5;
+  transition: border-color var(--transition-base), background var(--transition-base),
+              color var(--transition-base), transform var(--transition-base);
 }
 
 .empty-state-list li:hover {
-  background-color: #333333;
-  color: #ececec;
+  border-color: var(--accent-border);
+  background: var(--accent-glow);
+  color: var(--text-primary);
   transform: translateY(-2px);
 }
 
-@keyframes fadeIn {
+/* ─── Stagger animation ──────────────────────────────────────────────────── */
+@keyframes staggerIn {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(18px);
   }
   to {
     opacity: 1;

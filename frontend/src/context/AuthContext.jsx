@@ -1,8 +1,8 @@
 /**
- * Authentication context for Google Sign-In.
+ * Authentication context for Google Sign-In (backend-verified).
  */
 import { createContext, useState } from 'react';
-import { jwtDecode } from 'jwt-decode';
+import { apiRequest } from '../api/client';
 
 export const AuthContext = createContext(null);
 
@@ -23,24 +23,22 @@ const getInitialUser = () => {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(getInitialUser);
 
-  const login = (credentialResponse) => {
-    try {
-      // Decode the JWT token from Google
-      const decoded = jwtDecode(credentialResponse.credential);
-      
-      const userData = {
-        userId: decoded.sub,  // Google user ID (use as user_id in API calls)
-        name: decoded.name,
-        email: decoded.email,
-        picture: decoded.picture,
-      };
+  const login = async (authCode) => {
+    // Exchange auth code for verified user info via backend
+    const userData = await apiRequest('/auth/google/callback', {
+      method: 'POST',
+      body: JSON.stringify({ code: authCode }),
+    });
 
-      setUser(userData);
-      localStorage.setItem('bianca_user', JSON.stringify(userData));
-    } catch (error) {
-      console.error('Failed to decode credential:', error);
-      throw error;
-    }
+    const userInfo = {
+      userId: userData.user_id,
+      name: userData.name,
+      email: userData.email,
+      picture: userData.picture,
+    };
+
+    setUser(userInfo);
+    localStorage.setItem('bianca_user', JSON.stringify(userInfo));
   };
 
   const logout = () => {

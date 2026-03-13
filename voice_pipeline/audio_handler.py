@@ -2,7 +2,7 @@
 import asyncio
 import pyaudio
 from typing import Optional
-from config import (
+from voice_config import (
     FORMAT, CHANNELS, SEND_SAMPLE_RATE, RECEIVE_SAMPLE_RATE,
     CHUNK_SIZE, MIC_QUEUE_MAX_SIZE, DEBUG_LOGGING
 )

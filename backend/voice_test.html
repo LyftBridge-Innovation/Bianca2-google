@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bianca — Voice Test</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0c0c0e;
+      color: #d4cfc8;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      width: 560px;
+      padding: 40px 36px;
+      background: #13131a;
+      border: 1px solid #252530;
+      border-radius: 12px;
+    }
+
+    h1 {
+      font-family: "Georgia", serif;
+      font-size: 26px;
+      font-weight: 400;
+      color: #e8e2d6;
+      letter-spacing: 0.02em;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      color: #6b6760;
+      font-size: 12px;
+      margin-bottom: 32px;
+    }
+
+    /* ── Call button ── */
+    #btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 24px;
+      background: transparent;
+      border: 1px solid #c9a96e;
+      border-radius: 6px;
+      color: #c9a96e;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      margin-bottom: 24px;
+    }
+
+    #btn:hover { background: rgba(201, 169, 110, 0.08); }
+    #btn.active { border-color: #e05a5a; color: #e05a5a; }
+    #btn.active:hover { background: rgba(224, 90, 90, 0.08); }
+
+    /* ── Status ── */
+    #status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #6b6760;
+      margin-bottom: 28px;
+    }
+
+    #status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #3a3a42;
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+
+    #status-dot.connecting { background: #c9a96e; animation: pulse 1s infinite; }
+    #status-dot.connected  { background: #5cb85c; }
+    #status-dot.error      { background: #e05a5a; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    /* ── Panels ── */
+    .panel {
+      background: #0c0c0e;
+      border: 1px solid #1e1e26;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    .panel-header {
+      padding: 10px 14px;
+      border-bottom: 1px solid #1e1e26;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #4a4840;
+    }
+
+    .panel-body {
+      padding: 10px 14px;
+      max-height: 160px;
+      overflow-y: auto;
+      min-height: 48px;
+    }
+
+    .panel-body::-webkit-scrollbar { width: 4px; }
+    .panel-body::-webkit-scrollbar-track { background: transparent; }
+    .panel-body::-webkit-scrollbar-thumb { background: #252530; border-radius: 2px; }
+
+    .empty-hint {
+      color: #3a3a42;
+      font-size: 12px;
+      font-style: italic;
+    }
+
+    /* ── Tool call entries ── */
+    .tool-entry {
+      color: #c9a96e;
+      font-size: 12px;
+      padding: 2px 0;
+    }
+
+    .tool-entry::before { content: "> "; opacity: 0.5; }
+
+    /* ── Transcript entries ── */
+    .tx-entry {
+      padding: 4px 0;
+      border-bottom: 1px solid #1a1a22;
+      font-size: 13px;
+    }
+
+    .tx-entry:last-child { border-bottom: none; }
+    .tx-role-user .tx-role-label { color: #7899c8; }
+    .tx-role-assistant .tx-role-label { color: #c9a96e; }
+    .tx-role-label { font-weight: 600; margin-right: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .tx-text { color: #c4bfb8; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Bianca</h1>
+    <p class="subtitle">Phase 5B — Voice Test</p>
+
+    <button id="btn">Start Call</button>
+
+    <div id="status">
+      <span id="status-dot"></span>
+      <span id="status-text">Idle</span>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">Tool Calls</div>
+      <div class="panel-body" id="tool-calls">
+        <span class="empty-hint">No tool calls yet.</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">Transcript</div>
+      <div class="panel-body" id="transcript">
+        <span class="empty-hint">Transcript will appear here.</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── State ─────────────────────────────────────────────────────────────────
+    let ws           = null;
+    let micCtx       = null;
+    let playCtx      = null;
+    let processor    = null;
+    let micStream    = null;
+    let nextPlayTime = 0;
+
+    // ── DOM refs ──────────────────────────────────────────────────────────────
+    const btn        = document.getElementById('btn');
+    const statusDot  = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+    const toolPanel  = document.getElementById('tool-calls');
+    const txPanel    = document.getElementById('transcript');
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    function setStatus(text, cls) {
+      statusText.textContent = text;
+      statusDot.className   = cls || '';
+    }
+
+    function clearHints() {
+      toolPanel.querySelector('.empty-hint')?.remove();
+      txPanel.querySelector('.empty-hint')?.remove();
+    }
+
+    function appendToolCall(tool) {
+      clearHints();
+      const el = document.createElement('div');
+      el.className   = 'tool-entry';
+      el.textContent = tool + ' called';
+      toolPanel.appendChild(el);
+      toolPanel.scrollTop = toolPanel.scrollHeight;
+    }
+
+    function appendTranscript(role, text) {
+      clearHints();
+      const wrap  = document.createElement('div');
+      wrap.className = 'tx-entry tx-role-' + role;
+
+      const label  = document.createElement('span');
+      label.className   = 'tx-role-label';
+      label.textContent = role === 'user' ? 'You' : 'Bianca';
+
+      const body  = document.createElement('span');
+      body.className   = 'tx-text';
+      body.textContent = text;
+
+      wrap.appendChild(label);
+      wrap.appendChild(body);
+      txPanel.appendChild(wrap);
+      txPanel.scrollTop = txPanel.scrollHeight;
+    }
+
+    // ── Audio: capture ────────────────────────────────────────────────────────
+
+    function float32ToInt16(f32) {
+      const i16 = new Int16Array(f32.length);
+      for (let i = 0; i < f32.length; i++) {
+        const s = Math.max(-1, Math.min(1, f32[i]));
+        i16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+      }
+      return i16;
+    }
+
+    async function startMic() {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      // Request 16 kHz — browser resamples if device doesn't support it natively
+      micCtx   = new AudioContext({ sampleRate: 16000 });
+      const src = micCtx.createMediaStreamSource(micStream);
+      // ScriptProcessorNode buffer size 4096 → 256 ms at 16 kHz
+      processor = micCtx.createScriptProcessor(4096, 1, 1);
+      processor.onaudioprocess = (e) => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          const f32 = e.inputBuffer.getChannelData(0);
+          ws.send(float32ToInt16(f32).buffer);
+        }
+      };
+      src.connect(processor);
+      processor.connect(micCtx.destination); // required to keep processor alive
+    }
+
+    function stopMic() {
+      if (processor)  { processor.disconnect();  processor  = null; }
+      if (micCtx)     { micCtx.close();           micCtx     = null; }
+      if (micStream)  { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+    }
+
+    // ── Audio: playback ───────────────────────────────────────────────────────
+    // Gemini Live returns 24 kHz signed 16-bit PCM mono
+
+    function playPcm16(arrayBuffer) {
+      if (!playCtx) {
+        playCtx      = new AudioContext({ sampleRate: 24000 });
+        nextPlayTime = playCtx.currentTime;
+      }
+      const i16  = new Int16Array(arrayBuffer);
+      const f32  = new Float32Array(i16.length);
+      for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32768.0;
+
+      const buf  = playCtx.createBuffer(1, f32.length, 24000);
+      buf.copyToChannel(f32, 0);
+
+      const src  = playCtx.createBufferSource();
+      src.buffer = buf;
+      src.connect(playCtx.destination);
+
+      // Schedule back-to-back to avoid gaps
+      const now  = playCtx.currentTime;
+      if (nextPlayTime < now) nextPlayTime = now;
+      src.start(nextPlayTime);
+      nextPlayTime += buf.duration;
+    }
+
+    // ── Call lifecycle ────────────────────────────────────────────────────────
+
+    async function startCall() {
+      btn.textContent = 'Stop Call';
+      btn.classList.add('active');
+      btn.onclick = stopCall;
+      setStatus('Connecting…', 'connecting');
+
+      const host  = location.host;
+      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      const uid   = new URLSearchParams(location.search).get('user_id') || 'dev_user_1';
+      ws = new WebSocket(`${proto}://${host}/ws/voice/test?user_id=${encodeURIComponent(uid)}`);
+      ws.binaryType = 'arraybuffer';
+
+      ws.onopen = async () => {
+        setStatus('Connected', 'connected');
+        try {
+          await startMic();
+        } catch (err) {
+          appendTranscript('assistant', 'Mic error: ' + err.message);
+          setStatus('Mic error', 'error');
+        }
+      };
+
+      ws.onmessage = (event) => {
+        if (typeof event.data === 'string') {
+          try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'transcript') appendTranscript(msg.role, msg.text);
+            if (msg.type === 'tool_call')  appendToolCall(msg.tool);
+            if (msg.type === 'error')      appendTranscript('assistant', '[Error] ' + msg.message);
+          } catch (_) { /* ignore parse errors */ }
+        } else {
+          playPcm16(event.data);
+        }
+      };
+
+      ws.onerror = () => setStatus('Connection error', 'error');
+
+      ws.onclose = () => {
+        setStatus('Disconnected');
+        stopMic();
+        btn.textContent = 'Start Call';
+        btn.classList.remove('active');
+        btn.onclick = startCall;
+      };
+    }
+
+    function stopCall() {
+      if (ws) { ws.close(); ws = null; }
+      stopMic();
+    }
+
+    btn.onclick = startCall;
+  </script>
+</body>
+</html>

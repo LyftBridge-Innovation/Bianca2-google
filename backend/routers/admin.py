@@ -1,7 +1,8 @@
 """Admin endpoints for Phase 3A setup and testing."""
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from models import FirestoreCollections, User
-from config import TEST_USER_ID, GOOGLE_REFRESH_TOKEN, ASSISTANT_NAME
+import os
+from config import TEST_USER_ID, ASSISTANT_NAME
 from summarization import summarize_session_sync
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -32,7 +33,7 @@ def initialize_test_user():
             job_title="Software Engineer",
             company="Test Corp",
             timezone="America/Los_Angeles",
-            google_refresh_token=GOOGLE_REFRESH_TOKEN,
+            google_refresh_token=os.getenv("GOOGLE_REFRESH_TOKEN", ""),
             assistant_name=ASSISTANT_NAME
         )
         

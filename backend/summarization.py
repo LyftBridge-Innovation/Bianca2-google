@@ -11,7 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Use Vertex AI Gemini for summarization (uses Google Cloud credits)
-SUMMARIZATION_MODEL = "gemini-2.0-flash-exp"
+SUMMARIZATION_MODEL = "gemini-2.5-flash"
 
 
 def extract_event_memory(session: Session) -> str:
@@ -63,6 +63,7 @@ Extract event-based memories from above."""
             project=GCP_PROJECT_ID,
             location=GCP_LOCATION,
             temperature=0.0,  # Deterministic extraction
+            max_retries=6,  # Retry with exponential backoff for rate limits
         )
         
         messages = [
@@ -122,6 +123,7 @@ Extract entity-based information about people, companies, and topics mentioned."
             project=GCP_PROJECT_ID,
             location=GCP_LOCATION,
             temperature=0.0,  # Deterministic extraction
+            max_retries=6,  # Retry with exponential backoff for rate limits
         )
         
         messages = [

@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from routers.tools_test import router as tools_test_router
 from routers.chat import router as chat_router
 from routers.admin import router as admin_router
+from routers.voice import router as voice_router
+from routers.auth import router as auth_router
 
 app = FastAPI(title="AI Chief of Staff", version="0.3.0")
 
@@ -20,6 +22,8 @@ app.add_middleware(
 app.include_router(tools_test_router)
 app.include_router(chat_router)
 app.include_router(admin_router)
+app.include_router(voice_router)
+app.include_router(auth_router)
 
 
 @app.get("/")

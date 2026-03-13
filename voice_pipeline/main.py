@@ -1,60 +1,62 @@
 """
-Voice Chat Application - Main Entry Point
-A real-time voice chat application using Google's Gemini Live API.
+Voice pipeline — local mic/speaker entry point.
+
+Runs the full voice pipeline on your machine:
+  microphone → Gemini Live (Gmail + Calendar + Google Search tools) → speakers
+
+Usage:
+  python main.py
+  DEBUG_LOGGING=true python main.py
+  TEST_USER_ID=my_user python main.py
 """
 import asyncio
 from audio_handler import AudioHandler
 from gemini_session import GeminiSession
-from prompts import INITIAL_GREETING
+from voice_config import DEFAULT_USER_ID
+from voice_prompts import INITIAL_GREETING
 
 
 class VoiceChatApp:
-    """Main application orchestrator for the voice chat system."""
-    
-    def __init__(self, gemini_session=None, audio_handler=None):
-        self.audio_handler = audio_handler or AudioHandler()
-        self.gemini_session = gemini_session or GeminiSession()
-    
+    """Orchestrates AudioHandler + GeminiSession for a local voice session."""
+
+    def __init__(self, user_id: str = DEFAULT_USER_ID):
+        self.audio_handler = AudioHandler()
+        self.gemini_session = GeminiSession(user_id=user_id)
+
     async def start(self):
-        """Start the voice chat application."""
+        """Connect, greet, then run all tasks concurrently."""
         try:
-            # Connect to Gemini
             await self.gemini_session.connect()
-            
-            print("Connected to Gemini.")
-            print("🤖 Sending initial greeting to start the conversation...")
-            
-            # Send initial greeting to trigger AI to speak first
+            print(f"Connected to Gemini (user_id={self.gemini_session.user_id})")
+            print("Sending initial greeting...")
+
             await self.gemini_session.send_text(INITIAL_GREETING)
-            
-            print("👂 Listening for response and your speech...")
-            
-            # Start all tasks concurrently
+            print("Listening — speak now. Ctrl+C to quit.\n")
+
             async with asyncio.TaskGroup() as tg:
                 tg.create_task(self.audio_handler.listen())
                 tg.create_task(self.audio_handler.play())
                 tg.create_task(self.gemini_session.send_audio_stream(self.audio_handler))
                 tg.create_task(self.gemini_session.receive_audio_stream(self.audio_handler))
-                
+
         except asyncio.CancelledError:
             pass
         finally:
             await self.cleanup()
-    
+
     async def cleanup(self):
-        """Clean up resources."""
         await self.gemini_session.disconnect()
         self.audio_handler.cleanup()
         print("\nConnection closed.")
 
 
 async def run():
-    """Main function to run the voice chat application."""
-    app = VoiceChatApp()
+    app = VoiceChatApp(user_id=DEFAULT_USER_ID)
     await app.start()
+
 
 if __name__ == "__main__":
     try:
         asyncio.run(run())
     except KeyboardInterrupt:
-        print("Interrupted by user.")
+        print("Interrupted.")

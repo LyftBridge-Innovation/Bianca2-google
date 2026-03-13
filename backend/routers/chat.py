@@ -7,7 +7,8 @@ import json
 import asyncio
 from langchain_google_vertexai import ChatVertexAI
 from config import GCP_PROJECT_ID, GCP_LOCATION, TEST_USER_ID
-from prompts import CHIEF_OF_STAFF_SYSTEM_PROMPT
+from request_context import current_user_id
+from prompts import get_system_prompt
 from langchain_tools import ALL_TOOLS
 from models import FirestoreCollections, Session, Message, ToolCall, ToolActionLog
 from memory_utils import generate_human_readable
@@ -16,12 +17,19 @@ from memory_retrieval import retrieve_memories_for_message, format_memory_inject
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
+# Max number of past messages (user + assistant combined) included in each LLM
+# call.  The full history is always persisted in Firestore; this only controls
+# how many turns are sent as context to Gemini per request.
+MAX_HISTORY_MESSAGES = 20
+
 # Initialize Vertex AI Gemini LLM with tool calling (uses Google Cloud credits)
+# max_retries enables exponential backoff for 429 rate limit errors
 llm = ChatVertexAI(
-    model="gemini-2.0-flash-exp",
+    model="gemini-2.5-flash",
     project=GCP_PROJECT_ID,
     location=GCP_LOCATION,
     temperature=0.7,
+    max_retries=6,  # Retry with exponential backoff (4s, 8s, 16s, 32s, 64s, 128s)
 ).bind_tools(ALL_TOOLS)
 
 # Initialize Firestore collections
@@ -56,7 +64,10 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
     """
     try:
         from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
-        
+
+        # Set per-request user context for LangChain tools
+        current_user_id.set(request.user_id)
+
         # Get or create session
         if request.session_id:
             # Resume existing session
@@ -84,15 +95,15 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
         fs.append_message(session.session_id, user_message)
         
         # Build message chain with system prompt and session history
-        messages = [SystemMessage(content=CHIEF_OF_STAFF_SYSTEM_PROMPT)]
+        messages = [SystemMessage(content=get_system_prompt())]
         
-        # Add all messages from session history
-        for msg in session.messages:
+        # Add recent messages from session history (capped to avoid token limits)
+        for msg in session.messages[-MAX_HISTORY_MESSAGES:]:
             if msg.role == "user":
                 messages.append(HumanMessage(content=msg.content))
             elif msg.role == "assistant":
                 messages.append(AIMessage(content=msg.content))
-        
+
         # Add current user message
         messages.append(HumanMessage(content=request.message))
         
@@ -110,7 +121,7 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
             )
             
             # Update system message (first message in chain)
-            original_system_prompt = CHIEF_OF_STAFF_SYSTEM_PROMPT
+            original_system_prompt = get_system_prompt()
             enriched_system_prompt = f"{original_system_prompt}\n\n{memory_block}"
             messages[0] = SystemMessage(content=enriched_system_prompt)
             
@@ -235,6 +246,9 @@ async def stream_chat_response(request: ChatRequest, background_tasks: Backgroun
     logger = logging.getLogger(__name__)
     
     try:
+        # Set per-request user context for LangChain tools
+        current_user_id.set(request.user_id)
+
         # Get or create session
         if request.session_id:
             session = fs.get_session(request.session_id)
@@ -261,14 +275,15 @@ async def stream_chat_response(request: ChatRequest, background_tasks: Backgroun
         fs.append_message(session.session_id, user_message)
         
         # Build message chain
-        messages = [SystemMessage(content=CHIEF_OF_STAFF_SYSTEM_PROMPT)]
+        messages = [SystemMessage(content=get_system_prompt())]
         
-        for msg in session.messages:
+        # Add recent messages from session history (capped to avoid token limits)
+        for msg in session.messages[-MAX_HISTORY_MESSAGES:]:
             if msg.role == "user":
                 messages.append(HumanMessage(content=msg.content))
             elif msg.role == "assistant":
                 messages.append(AIMessage(content=msg.content))
-        
+
         messages.append(HumanMessage(content=request.message))
         
         # Phase 3C: Memory retrieval and injection
@@ -282,7 +297,7 @@ async def stream_chat_response(request: ChatRequest, background_tasks: Backgroun
                 event_memories=memory_data["event_memories"],
                 entity_memories=memory_data["entity_memories"]
             )
-            original_system_prompt = CHIEF_OF_STAFF_SYSTEM_PROMPT
+            original_system_prompt = get_system_prompt()
             enriched_system_prompt = f"{original_system_prompt}\n\n{memory_block}"
             messages[0] = SystemMessage(content=enriched_system_prompt)
             logger.info(f"Injected {memory_data['total_count']} memories")
@@ -421,8 +436,9 @@ def chat_health():
     """Health check for chat service."""
     return {
         "status": "ok",
-        "model": "gemini-2.0-flash-exp (Vertex AI)",
+        "model": "gemini-2.5-flash (Vertex AI)",
         "tools_available": len(ALL_TOOLS),
+        "rate_limit_handling": "exponential_backoff_max_6_retries",
     }
 
 
@@ -475,3 +491,33 @@ def get_user_sessions(user_id: str, limit: int = 50):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch sessions: {str(e)}")
+
+
+@router.delete("/session/{session_id}")
+def delete_session(session_id: str, user_id: str):
+    """
+    Delete a session and all its associated data.
+    Only the session owner can delete it.
+    This does NOT affect RAG memories as those are cross-session.
+    """
+    try:
+        # Get session to verify ownership
+        session_ref = fs.db.collection('sessions').document(session_id)
+        session_doc = session_ref.get()
+        
+        if not session_doc.exists:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        session_data = session_doc.to_dict()
+        if session_data.get("user_id") != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized to delete this session")
+        
+        # Delete the session document
+        session_ref.delete()
+        
+        return {"status": "success", "message": f"Session {session_id} deleted"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete session: {str(e)}")

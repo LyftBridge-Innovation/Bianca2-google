@@ -2,7 +2,25 @@ import { useSessions } from '../../hooks/useSessions';
 import './Sidebar.css';
 
 export function Sidebar({ userId, currentSessionId, onSelectSession, onNewChat }) {
-  const { sessions, loading } = useSessions(userId);
+  const { sessions, loading, deleteSession } = useSessions(userId);
+
+  const handleDeleteSession = async (e, sessionId) => {
+    e.stopPropagation(); // Prevent triggering onSelectSession
+    
+    if (!confirm('Delete this chat? This cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await deleteSession(sessionId);
+      // If we deleted the current session, clear the chat
+      if (sessionId === currentSessionId) {
+        onNewChat();
+      }
+    } catch (err) {
+      alert('Failed to delete session. Please try again.');
+    }
+  };
 
   const groupSessionsByDate = (sessions) => {
     const now = new Date();
@@ -50,15 +68,33 @@ export function Sidebar({ userId, currentSessionId, onSelectSession, onNewChat }
       <div className="sidebar-group" key={title}>
         <div className="sidebar-group-title">{title}</div>
         {sessions.map((session) => (
-          <button
+          <div
             key={session.session_id}
             className={`sidebar-session ${
               session.session_id === currentSessionId ? 'active' : ''
             }`}
-            onClick={() => onSelectSession(session.session_id)}
           >
-            <span className="sidebar-session-title">{session.title}</span>
-          </button>
+            <button
+              className="sidebar-session-button"
+              onClick={() => onSelectSession(session.session_id)}
+            >
+              <span className="sidebar-session-title">{session.title}</span>
+            </button>
+            <button
+              className="sidebar-session-delete"
+              onClick={(e) => handleDeleteSession(e, session.session_id)}
+              title="Delete chat"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path
+                  d="M4 4L12 12M12 4L4 12"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
+          </div>
         ))}
       </div>
     );

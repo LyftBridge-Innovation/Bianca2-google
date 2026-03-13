@@ -6,10 +6,11 @@ from config import GCP_PROJECT_ID, GCP_LOCATION, ASSISTANT_NAME
 
 # Use Vertex AI Gemini for human_readable generation (uses Google Cloud credits)
 _cheap_llm = ChatVertexAI(
-    model="gemini-2.0-flash-exp",
+    model="gemini-2.5-flash",
     project=GCP_PROJECT_ID,
     location=GCP_LOCATION,
     temperature=0.3,
+    max_retries=6,  # Retry with exponential backoff for rate limits
 )
 
 

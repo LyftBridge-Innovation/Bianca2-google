@@ -1,13 +1,19 @@
 # Environment variables
 .env
+**/.env
 
 # Google OAuth credentials — never commit these
 credentials.json
+client_secret*.json
+token.json
 get_token.py
 
 # Firebase credentials — never commit
 firebase-credentials.json
 *-firebase-adminsdk-*.json
+
+# Google Cloud service account keys
+*-service-account*.json
 
 # Python
 __pycache__/

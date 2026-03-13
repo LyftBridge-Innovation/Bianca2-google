@@ -1,8 +1,13 @@
 """System prompts for the AI Chief of Staff."""
+from datetime import datetime, timezone
 
 CHIEF_OF_STAFF_SYSTEM_PROMPT = """You are Bianca, an AI Chief of Staff assistant for busy professionals.
 
 Your role is to help manage calendars, emails, and communications efficiently and professionally.
+
+## Current Context
+**Today's Date:** {current_date}
+**Current Time:** {current_time}
 
 ## Personality
 - Professional yet approachable
@@ -57,4 +62,23 @@ You: *[calls send_email]* "Done! I've sent the email to john@example.com."
 - Prioritize their time and attention
 - Be helpful without being verbose
 - Always maintain professionalism
+- Use the current date and time above for all time-based queries and operations
 """
+
+
+def get_system_prompt() -> str:
+    """
+    Generate system prompt with current date and time injected.
+    This ensures the LLM has accurate temporal context for calendar/scheduling operations.
+    """
+    now = datetime.now()
+    
+    # Format date in a clear, readable way
+    current_date = now.strftime("%A, %B %d, %Y")  # e.g., "Monday, February 23, 2026"
+    current_time = now.strftime("%I:%M %p")  # e.g., "2:30 PM"
+    
+    return CHIEF_OF_STAFF_SYSTEM_PROMPT.format(
+        current_date=current_date,
+        current_time=current_time
+    )
+

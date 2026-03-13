@@ -1,2 +1,7 @@
 google-genai>=0.3.0
 pyaudio>=0.2.14
+python-dotenv>=1.0.0
+google-auth>=2.0.0
+google-auth-oauthlib>=1.0.0
+google-api-python-client>=2.0.0
+audioop-lts>=0.2.1  # audioop was removed in Python 3.13

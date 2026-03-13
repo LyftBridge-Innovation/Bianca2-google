@@ -2,7 +2,7 @@
  * useSessions hook - fetches and manages session list for sidebar.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { getSessions } from '../api/client';
+import { getSessions, deleteSession as deleteSessionAPI } from '../api/client';
 
 export function useSessions(userId) {
   const [sessions, setSessions] = useState([]);
@@ -25,6 +25,19 @@ export function useSessions(userId) {
     }
   }, [userId]);
 
+  const deleteSession = useCallback(async (sessionId) => {
+    if (!userId) return;
+
+    try {
+      await deleteSessionAPI(sessionId, userId);
+      // Remove from local state immediately
+      setSessions(prev => prev.filter(s => s.session_id !== sessionId));
+    } catch (err) {
+      console.error('Failed to delete session:', err);
+      throw err;
+    }
+  }, [userId]);
+
   useEffect(() => {
     fetchSessions();
   }, [fetchSessions]);
@@ -34,5 +47,6 @@ export function useSessions(userId) {
     loading,
     error,
     refreshSessions: fetchSessions,
+    deleteSession,
   };
 }

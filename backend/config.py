@@ -4,11 +4,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Google Workspace CLI (gws) configuration
+# The gws CLI is used for all Gmail/Calendar API calls.
+# Per-user OAuth tokens are minted from refresh tokens stored in Firestore.
+GWS_CLI_PATH = os.getenv("GWS_CLI_PATH", "gws")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-GOOGLE_REFRESH_TOKEN = os.getenv("GOOGLE_REFRESH_TOKEN")
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-GOOGLE_CALENDAR_ID = os.getenv("GOOGLE_CALENDAR_ID", "primary")
 TEST_USER_ID = os.getenv("TEST_USER_ID", "dev_user_1")
 
 # Firebase/Firestore configuration
@@ -23,7 +24,12 @@ VERTEX_PROJECT_ID = os.getenv("VERTEX_PROJECT_ID", FIREBASE_PROJECT_ID)
 
 # Vertex AI Gemini configuration (uses Google Cloud credits)
 GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID", FIREBASE_PROJECT_ID)
-GCP_LOCATION = os.getenv("GCP_LOCATION", "us-central1")  # Gemini models available here
+GCP_LOCATION = os.getenv("GCP_LOCATION", "us-central1")  # Regional endpoint for Gemini
+
+# Rate Limiting Strategy (handles 429 errors):
+# - Using gemini-2.5-flash (stable, available until June 2026)
+# - max_retries=6 with exponential backoff (4s, 8s, 16s, 32s, 64s, 128s)
+# - For higher limits: Request quota increase or use Provisioned Throughput
 
 # Memory retrieval configuration (Phase 3C)
 MEMORY_RECENCY_DAYS_DEFAULT = int(os.getenv("MEMORY_RECENCY_DAYS_DEFAULT", "30"))

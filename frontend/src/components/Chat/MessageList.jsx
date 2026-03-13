@@ -50,7 +50,8 @@ export function MessageList({ messages, isStreaming, currentToolCall, streamingC
               message={{ 
                 role: 'assistant', 
                 content: streamingContent 
-              }} 
+              }}
+              isStreaming={true}
             />
           )}
 

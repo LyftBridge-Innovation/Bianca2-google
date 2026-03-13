@@ -1,44 +1,98 @@
 .message {
   display: flex;
-  margin-bottom: 24px;
-  animation: fadeIn 0.2s ease-in-out;
+  margin-bottom: 20px;
+  animation: msgIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.message-user {
-  justify-content: flex-end;
-}
+.message-user      { justify-content: flex-end; }
+.message-assistant { justify-content: flex-start; }
 
-.message-assistant {
-  justify-content: flex-start;
-}
-
+/* ─── Bubble ─────────────────────────────────────────────────────────────── */
 .message-content {
-  max-width: 70%;
-  padding: 12px 16px;
-  font-size: 15px;
-  line-height: 1.6;
+  max-width: 72%;
+  padding: 11px 16px;
+  font-size: 14.5px;
+  line-height: 1.72;
   word-wrap: break-word;
-  white-space: pre-wrap;
+  font-weight: 300;
 }
 
 .message-user .message-content {
-  background-color: #2a2a2a;
-  border-radius: 18px;
-  color: #ececec;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-muted);
+  border-radius: 18px 18px 4px 18px;
+  color: var(--text-primary);
+  font-weight: 400;
+  white-space: pre-wrap;
 }
 
 .message-assistant .message-content {
-  background-color: transparent;
-  color: #ececec;
+  background: transparent;
+  color: var(--text-primary);
+  padding-left: 0;
 }
 
-@keyframes fadeIn {
+/* ─── Markdown inside assistant bubbles ─────────────────────────────────── */
+.message-assistant .message-content p {
+  margin: 0 0 8px;
+}
+.message-assistant .message-content p:last-child {
+  margin-bottom: 0;
+}
+.message-assistant .message-content ul,
+.message-assistant .message-content ol {
+  margin: 4px 0 8px;
+  padding-left: 20px;
+}
+.message-assistant .message-content li {
+  margin-bottom: 4px;
+}
+.message-assistant .message-content strong {
+  font-weight: 600;
+}
+.message-assistant .message-content code {
+  background: var(--bg-elevated);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+.message-assistant .message-content pre {
+  background: var(--bg-elevated);
+  padding: 10px 14px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+.message-assistant .message-content pre code {
+  background: none;
+  padding: 0;
+}
+
+/* ─── Entry animation ────────────────────────────────────────────────────── */
+@keyframes msgIn {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* ─── Streaming cursor ───────────────────────────────────────────────────── */
+.typing-cursor {
+  display: inline-block;
+  margin-left: 1px;
+  width: 2px;
+  height: 1em;
+  background: var(--accent);
+  border-radius: 1px;
+  vertical-align: text-bottom;
+  animation: cursorBlink 0.85s step-end infinite;
+}
+
+@keyframes cursorBlink {
+  0%, 49%  { opacity: 1; }
+  50%, 100% { opacity: 0; }
 }

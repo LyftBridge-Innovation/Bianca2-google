@@ -42,4 +42,13 @@ export async function getSession(sessionId) {
   return apiRequest(`/chat/session/${sessionId}`);
 }
 
+/**
+ * Delete a session by ID.
+ */
+export async function deleteSession(sessionId, userId) {
+  return apiRequest(`/chat/session/${sessionId}?user_id=${userId}`, {
+    method: 'DELETE',
+  });
+}
+
 export { API_BASE_URL };
