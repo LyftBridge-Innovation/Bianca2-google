@@ -33,9 +33,30 @@ def extract_title(markdown: str) -> str:
     return match.group(1).strip() if match else ""
 
 
-def _extract_trigger_words(title: str) -> set[str]:
-    """Extract meaningful words from a skill title."""
-    words = set(_WORD_PATTERN.findall(title.lower()))
+_SCAN_LINES = 4  # number of non-empty lines to extract trigger words from
+
+
+def _extract_trigger_words(content: str) -> set[str]:
+    """
+    Extract trigger words from the first few non-empty lines of a skill file.
+
+    Scans the first 4 non-empty lines (which typically cover the H1 title and
+    any keyword/description lines right below it), tokenizes them, and removes
+    stopwords + short words.
+    """
+    lines_seen = 0
+    text_parts = []
+
+    for line in content.split("\n"):
+        stripped = line.strip().lstrip("#").strip()
+        if not stripped:
+            continue
+        text_parts.append(stripped)
+        lines_seen += 1
+        if lines_seen >= _SCAN_LINES:
+            break
+
+    words = set(_WORD_PATTERN.findall(" ".join(text_parts).lower()))
     return {w for w in words if w not in _STOPWORDS and len(w) > 2}
 
 
@@ -60,7 +81,7 @@ def match_skills(
     matched = []
 
     for _skill_id, title, content in skills:
-        triggers = _extract_trigger_words(title)
+        triggers = _extract_trigger_words(content)
         if triggers & message_words:
             matched.append((title, content))
 
