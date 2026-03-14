@@ -14,6 +14,7 @@ from models import FirestoreCollections, Session, Message, ToolCall, ToolActionL
 from memory_utils import generate_human_readable
 from summarization import summarize_session_sync
 from memory_retrieval import retrieve_memories_for_message, format_memory_injection
+from skill_matcher import match_skills, build_skills_block
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -129,7 +130,18 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
             logger = getLogger(__name__)
             logger.info(f"Injected {memory_data['total_count']} memories (window: {memory_data['recency_window_days']} days)")
         # ────────────────────────────────────────────────────────────────────
-        
+
+        # ── Skill matching: inject relevant per-user skills ────────────────
+        user_skills_raw = fs.get_user_skills_for_matching(request.user_id)
+        if user_skills_raw:
+            skill_tuples = [(s['skill_id'], s['title'], s['content']) for s in user_skills_raw]
+            matched = match_skills(request.message, skill_tuples)
+            skills_block = build_skills_block(matched)
+            if skills_block:
+                current_prompt = messages[0].content
+                messages[0] = SystemMessage(content=f"{current_prompt}\n\n{skills_block}")
+        # ────────────────────────────────────────────────────────────────────
+
         # Track tool calls for logging
         session_tool_calls = []
         
@@ -301,7 +313,17 @@ async def stream_chat_response(request: ChatRequest, background_tasks: Backgroun
             enriched_system_prompt = f"{original_system_prompt}\n\n{memory_block}"
             messages[0] = SystemMessage(content=enriched_system_prompt)
             logger.info(f"Injected {memory_data['total_count']} memories")
-        
+
+        # Skill matching: inject relevant per-user skills
+        user_skills_raw = fs.get_user_skills_for_matching(request.user_id)
+        if user_skills_raw:
+            skill_tuples = [(s['skill_id'], s['title'], s['content']) for s in user_skills_raw]
+            matched = match_skills(request.message, skill_tuples)
+            skills_block = build_skills_block(matched)
+            if skills_block:
+                current_prompt = messages[0].content
+                messages[0] = SystemMessage(content=f"{current_prompt}\n\n{skills_block}")
+
         # Track tool calls
         session_tool_calls = []
         

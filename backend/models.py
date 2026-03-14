@@ -206,3 +206,41 @@ class FirestoreCollections:
         """Create an entity memory and return its ID."""
         self.db.collection('entity_memories').document(memory.memory_id).set(memory.model_dump())
         return memory.memory_id
+
+    # ── User Skills ────────────────────────────────────────────────────────
+
+    def create_user_skill(self, user_id: str, skill_data: Dict[str, Any]) -> None:
+        """Create a skill document under a user's skills subcollection."""
+        self.db.collection('users').document(user_id)\
+            .collection('skills').document(skill_data['skill_id']).set(skill_data)
+
+    def list_user_skills(self, user_id: str) -> List[Dict[str, Any]]:
+        """List all skills for a user, most recent first."""
+        docs = self.db.collection('users').document(user_id)\
+            .collection('skills').stream()
+        skills = [doc.to_dict() for doc in docs]
+        skills.sort(key=lambda s: s.get('created_at', ''), reverse=True)
+        return skills
+
+    def get_user_skills_for_matching(self, user_id: str) -> List[Dict[str, str]]:
+        """Get skills with title + content for the skill matcher."""
+        docs = self.db.collection('users').document(user_id)\
+            .collection('skills').stream()
+        return [
+            {
+                'skill_id': doc.id,
+                'title': doc.to_dict().get('title', ''),
+                'content': doc.to_dict().get('content', ''),
+            }
+            for doc in docs
+        ]
+
+    def delete_user_skill(self, user_id: str, skill_id: str) -> bool:
+        """Delete a skill. Returns True if it existed."""
+        ref = self.db.collection('users').document(user_id)\
+            .collection('skills').document(skill_id)
+        doc = ref.get()
+        if doc.exists:
+            ref.delete()
+            return True
+        return False

@@ -1,12 +1,21 @@
 import { useSessions } from '../../hooks/useSessions';
 import './Sidebar.css';
 
-export function Sidebar({ userId, currentSessionId, onSelectSession, onNewChat }) {
+export function Sidebar({
+  userId,
+  userPicture,
+  userName,
+  currentSessionId,
+  onSelectSession,
+  onNewChat,
+  onGoToConfig,
+  activeView,
+}) {
   const { sessions, loading, deleteSession } = useSessions(userId);
 
   const handleDeleteSession = async (e, sessionId) => {
     e.stopPropagation(); // Prevent triggering onSelectSession
-    
+
     if (!confirm('Delete this chat? This cannot be undone.')) {
       return;
     }
@@ -71,7 +80,7 @@ export function Sidebar({ userId, currentSessionId, onSelectSession, onNewChat }
           <div
             key={session.session_id}
             className={`sidebar-session ${
-              session.session_id === currentSessionId ? 'active' : ''
+              session.session_id === currentSessionId && activeView === 'chat' ? 'active' : ''
             }`}
           >
             <button
@@ -128,6 +137,23 @@ export function Sidebar({ userId, currentSessionId, onSelectSession, onNewChat }
             {renderSessionGroup('Older', grouped.older)}
           </>
         )}
+      </div>
+
+      {/* Footer — config button */}
+      <div className="sidebar-footer">
+        <button
+          className={`sidebar-config-btn ${activeView === 'config' ? 'active' : ''}`}
+          onClick={onGoToConfig}
+        >
+          {userPicture ? (
+            <img src={userPicture} alt="" className="sidebar-config-avatar" referrerPolicy="no-referrer" />
+          ) : (
+            <div className="sidebar-config-avatar sidebar-config-avatar-fallback">
+              {userName?.[0] || 'U'}
+            </div>
+          )}
+          <span className="sidebar-config-label">Neural Config</span>
+        </button>
       </div>
     </div>
   );

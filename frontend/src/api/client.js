@@ -58,4 +58,30 @@ export async function getRequiredScopes() {
   return apiRequest('/auth/scopes');
 }
 
+/**
+ * List skills for a user.
+ */
+export async function getSkills(userId) {
+  return apiRequest(`/skills/?user_id=${userId}`);
+}
+
+/**
+ * Upload a skill markdown file.
+ */
+export async function uploadSkill(userId, filename, content) {
+  return apiRequest('/skills/upload', {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId, filename, content }),
+  });
+}
+
+/**
+ * Delete a skill by ID.
+ */
+export async function deleteSkillAPI(skillId, userId) {
+  return apiRequest(`/skills/${skillId}?user_id=${userId}`, {
+    method: 'DELETE',
+  });
+}
+
 export { API_BASE_URL };
