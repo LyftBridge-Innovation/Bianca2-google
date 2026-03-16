@@ -1,4 +1,6 @@
 """Tasks router — CRUD and execution endpoints for background tasks."""
+import asyncio
+import json
 from datetime import datetime, timezone
 from typing import Optional, Any
 from fastapi import APIRouter, HTTPException, Request
@@ -6,6 +8,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from task_service import task_service
+from models import FirestoreCollections
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -108,6 +111,62 @@ async def execute_task(task_id: str, request: Request):
     # For now, execute directly
     result = task_service.execute_task(task_id)
     return result
+
+
+# ── Real-time Updates (SSE) ─────────────────────────────────────────────────
+
+
+@router.get("/stream")
+async def stream_tasks(user_id: str):
+    """
+    Server-Sent Events endpoint for real-time task updates.
+    Streams task changes for a specific user using Firestore listeners.
+    """
+    async def event_generator():
+        """Generate SSE events from Firestore changes."""
+        fs = FirestoreCollections()
+        queue = asyncio.Queue()
+
+        def on_snapshot(col_snapshot, changes, read_time):
+            """Callback for Firestore real-time updates."""
+            for change in changes:
+                if change.type.name in ('ADDED', 'MODIFIED'):
+                    task_data = change.document.to_dict()
+                    # Only send if it belongs to this user
+                    if task_data.get('user_id') == user_id:
+                        asyncio.create_task(queue.put(task_data))
+
+        # Subscribe to user's tasks
+        query = fs.db.collection('tasks').where('user_id', '==', user_id)
+        watch = query.on_snapshot(on_snapshot)
+
+        try:
+            # Send initial connection event
+            yield f"data: {json.dumps({'type': 'connected'})}\n\n"
+
+            # Stream updates
+            while True:
+                task_data = await asyncio.wait_for(queue.get(), timeout=30.0)
+                yield f"data: {json.dumps(task_data, default=str)}\n\n"
+
+        except asyncio.TimeoutError:
+            # Send keepalive every 30 seconds
+            yield f"data: {json.dumps({'type': 'keepalive'})}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+        finally:
+            # Unsubscribe when client disconnects
+            watch.unsubscribe()
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        }
+    )
 
 
 # ── Health Check ────────────────────────────────────────────────────────────

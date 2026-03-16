@@ -17,6 +17,7 @@ import {
   getTasks,
   cancelTask,
   deleteTaskAPI,
+  API_BASE_URL,
 } from '../api/client';
 import './NeuralConfig.css';
 
@@ -143,15 +144,52 @@ export function NeuralConfig({ onGoToChat }) {
     }
   }, [activeTab, user.userId]);
 
-  // Refresh tasks periodically when on tasks tab
+  // Refresh tasks with SSE when on tasks tab
   useEffect(() => {
     if (activeTab !== 'tasks') return;
-    const interval = setInterval(() => {
-      getTasks(user.userId)
-        .then((data) => setTasks(data || []))
-        .catch((err) => console.error('Failed to refresh tasks:', err));
-    }, 5000);
-    return () => clearInterval(interval);
+
+    const eventSource = new EventSource(`${API_BASE_URL}/tasks/stream?user_id=${user.userId}`);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'connected' || data.type === 'keepalive') {
+          // Connection established or keepalive
+          return;
+        }
+
+        if (data.type === 'error') {
+          console.error('SSE error:', data.message);
+          return;
+        }
+
+        // Task update - merge into existing tasks
+        setTasks((prevTasks) => {
+          const existingIndex = prevTasks.findIndex((t) => t.task_id === data.task_id);
+          if (existingIndex >= 0) {
+            // Update existing task
+            const updated = [...prevTasks];
+            updated[existingIndex] = data;
+            return updated;
+          } else {
+            // Add new task
+            return [data, ...prevTasks];
+          }
+        });
+      } catch (err) {
+        console.error('Failed to parse SSE data:', err);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.error('SSE connection error:', err);
+      eventSource.close();
+    };
+
+    return () => {
+      eventSource.close();
+    };
   }, [activeTab, user.userId]);
 
   useEffect(() => {

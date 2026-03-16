@@ -6,7 +6,7 @@ For production with USE_CLOUD_TASKS=true, uses Google Cloud Tasks.
 import os
 import logging
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, Callable, Dict, Any
 
 from models import Task, FirestoreCollections
@@ -14,9 +14,17 @@ from models import Task, FirestoreCollections
 logger = logging.getLogger(__name__)
 
 USE_CLOUD_TASKS = os.getenv("USE_CLOUD_TASKS", "false").lower() == "true"
+PROJECT_ID = os.getenv("GCP_PROJECT_ID", "")
+LOCATION = os.getenv("CLOUD_TASKS_LOCATION", "us-central1")
+QUEUE_NAME = os.getenv("CLOUD_TASKS_QUEUE", "bianca-task-queue")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+TASKS_SERVICE_ACCOUNT = os.getenv("TASKS_SERVICE_ACCOUNT", "")
 
 # Task executor registry — maps task_type to executor function
 _EXECUTORS: Dict[str, Callable[[str, Dict[str, Any]], Dict[str, Any]]] = {}
+
+# Cloud Tasks client (lazy-initialized)
+_cloud_tasks_client = None
 
 
 def register_executor(task_type: str):
@@ -74,10 +82,42 @@ class TaskService:
 
     def _enqueue_cloud_tasks(self, task_id: str) -> None:
         """Enqueue task to Google Cloud Tasks (production mode)."""
-        # TODO: Implement Cloud Tasks integration in Phase 2
-        # For now, fall back to local execution
-        logger.warning("Cloud Tasks not yet implemented, using local execution")
-        self._enqueue_local(task_id)
+        global _cloud_tasks_client
+
+        if not PROJECT_ID or not TASKS_SERVICE_ACCOUNT:
+            logger.warning("Cloud Tasks not configured, falling back to local execution")
+            self._enqueue_local(task_id)
+            return
+
+        try:
+            # Lazy-initialize Cloud Tasks client
+            if _cloud_tasks_client is None:
+                from google.cloud import tasks_v2
+                _cloud_tasks_client = tasks_v2.CloudTasksClient()
+
+            parent = _cloud_tasks_client.queue_path(PROJECT_ID, LOCATION, QUEUE_NAME)
+
+            task_payload = {
+                "http_request": {
+                    "http_method": "POST",
+                    "url": f"{BACKEND_URL}/tasks/execute/{task_id}",
+                    "oidc_token": {
+                        "service_account_email": TASKS_SERVICE_ACCOUNT,
+                    },
+                }
+            }
+
+            response = _cloud_tasks_client.create_task(
+                request={"parent": parent, "task": task_payload}
+            )
+
+            # Store Cloud Tasks name for tracking
+            self.fs.update_task(task_id, cloud_task_name=response.name)
+            logger.info(f"Enqueued task {task_id} to Cloud Tasks: {response.name}")
+
+        except Exception as e:
+            logger.error(f"Failed to enqueue to Cloud Tasks: {e}, falling back to local")
+            self._enqueue_local(task_id)
 
     def _execute_task_sync(self, task_id: str) -> None:
         """Execute a task synchronously (called by background thread or Cloud Tasks)."""
