@@ -1,4 +1,4 @@
-"""Skills CRUD router — per-user skill upload/list/delete."""
+"""Skills CRUD router — per-user skill upload/list/delete + marketplace."""
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -6,9 +6,14 @@ from models import FirestoreCollections
 from skill_matcher import extract_title
 from datetime import datetime, timezone
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/skills", tags=["skills"])
 fs = FirestoreCollections()
+
+# ── Request/Response models ──────────────────────────────────────────────────
 
 
 class SkillUploadRequest(BaseModel):
@@ -25,7 +30,7 @@ class SkillResponse(BaseModel):
     size_bytes: int
 
 
-# ── Endpoints ────────────────────────────────────────────────────────────────
+# ── CRUD endpoints ───────────────────────────────────────────────────────────
 
 @router.get("/")
 def list_skills(user_id: str):
@@ -81,3 +86,93 @@ def delete_skill(skill_id: str, user_id: str):
     if not success:
         raise HTTPException(status_code=404, detail="Skill not found")
     return {"status": "deleted", "skill_id": skill_id}
+
+
+# ── Marketplace endpoints ────────────────────────────────────────────────────
+
+@router.post("/publish")
+def publish_skill(user_id: str, skill_id: str):
+    """Publish a user's skill to the marketplace."""
+    # Get the user's skill
+    user_skills = fs.list_user_skills(user_id)
+    skill = next((s for s in user_skills if s["skill_id"] == skill_id), None)
+    if not skill:
+        raise HTTPException(status_code=404, detail="Skill not found")
+
+    # Get user info
+    user = fs.get_user(user_id)
+
+    # Extract description (first non-title paragraph)
+    lines = skill["content"].split("\n")
+    description = ""
+    for line in lines[1:]:  # Skip title line
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#"):
+            description = stripped
+            break
+
+    # Publish to marketplace
+    public_skill = {
+        "title": skill["title"],
+        "description": description[:200],  # Limit to 200 chars
+        "content": skill["content"],
+        "author_user_id": user_id,
+        "author_name": user.full_name or user.email,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    public_id = fs.create_public_skill(public_skill)
+
+    logger.info(f"User {user_id} published skill '{skill['title']}' to marketplace")
+
+    return {"public_skill_id": public_id, "title": skill["title"]}
+
+
+@router.get("/marketplace")
+def get_marketplace_skills():
+    """List all published skills from the marketplace."""
+    skills = fs.list_public_skills(limit=100)
+    return {"skills": skills}
+
+
+@router.post("/install-from-marketplace")
+def install_from_marketplace(user_id: str, public_skill_id: str):
+    """Install a marketplace skill to user's collection."""
+    # Get marketplace skill
+    public_skill = fs.get_public_skill(public_skill_id)
+    if not public_skill:
+        raise HTTPException(status_code=404, detail="Marketplace skill not found")
+
+    # Create user skill copy
+    user_skill = {
+        "skill_id": str(uuid.uuid4()),
+        "filename": f"{public_skill['title'].lower().replace(' ', '-')}.md",
+        "title": public_skill["title"],
+        "content": public_skill["content"],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "size_bytes": len(public_skill["content"].encode("utf-8")),
+        "source": "marketplace",
+    }
+    fs.create_user_skill(user_id, user_skill)
+
+    # Increment install counter
+    fs.increment_install_count(public_skill_id)
+
+    logger.info(f"User {user_id} installed skill '{public_skill['title']}' from marketplace")
+
+    return {"skill_id": user_skill["skill_id"], "title": public_skill["title"]}
+
+
+@router.delete("/unpublish/{public_skill_id}")
+def unpublish_skill(public_skill_id: str, user_id: str):
+    """Remove a skill from marketplace (author only)."""
+    public_skill = fs.get_public_skill(public_skill_id)
+    if not public_skill:
+        raise HTTPException(status_code=404, detail="Marketplace skill not found")
+
+    if public_skill["author_user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Only the author can unpublish this skill")
+
+    fs.delete_public_skill(public_skill_id)
+    logger.info(f"User {user_id} unpublished skill '{public_skill['title']}' from marketplace")
+
+    return {"message": "Skill unpublished"}

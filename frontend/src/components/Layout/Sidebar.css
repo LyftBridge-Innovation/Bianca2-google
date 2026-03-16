@@ -19,11 +19,11 @@
   height: 100%;
   background: linear-gradient(
     180deg,
-    rgba(124, 106, 247, 0.30) 0%,
-    rgba(124, 106, 247, 0.12) 20%,
+    rgba(41, 108, 172, 0.30) 0%,
+    rgba(41, 108, 172, 0.12) 20%,
     rgba(255, 255, 255, 0.04) 50%,
-    rgba(232, 184, 109, 0.12) 85%,
-    rgba(232, 184, 109, 0.22) 100%
+    rgba(93, 134, 173, 0.12) 85%,
+    rgba(93, 134, 173, 0.22) 100%
   );
   pointer-events: none;
 }
@@ -44,7 +44,7 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  filter: drop-shadow(0 0 16px rgba(232, 184, 109, 0.18));
+  filter: drop-shadow(0 0 16px rgba(93, 134, 173, 0.18));
   text-rendering: optimizeLegibility;
 }
 
@@ -67,10 +67,10 @@
 }
 
 .sidebar-new-chat:hover {
-  border-color: rgba(124, 106, 247, 0.45);
+  border-color: rgba(41, 108, 172, 0.45);
   color: var(--accent);
-  background: rgba(124, 106, 247, 0.08);
-  box-shadow: 0 0 20px rgba(124, 106, 247, 0.08), inset 0 0 10px rgba(124, 106, 247, 0.04);
+  background: rgba(41, 108, 172, 0.08);
+  box-shadow: 0 0 20px rgba(41, 108, 172, 0.08), inset 0 0 10px rgba(41, 108, 172, 0.04);
 }
 
 /* ─── Sessions list ──────────────────────────────────────────────────────── */
@@ -120,9 +120,9 @@
   top: 18%;
   height: 64%;
   width: 3px;
-  background: linear-gradient(180deg, #7c6af7 0%, #4dc8f5 100%);
+  background: linear-gradient(180deg, #296CAC 0%, #5D86AD 100%);
   border-radius: 0 2px 2px 0;
-  box-shadow: 0 0 8px rgba(124, 106, 247, 0.5);
+  box-shadow: 0 0 8px rgba(41, 108, 172, 0.5);
 }
 
 .sidebar-session-button {
@@ -145,7 +145,7 @@
 }
 
 .sidebar-session.active .sidebar-session-button {
-  text-shadow: 0 0 16px rgba(124, 106, 247, 0.25);
+  text-shadow: 0 0 16px rgba(41, 108, 172, 0.25);
 }
 
 .sidebar-session-title {
@@ -189,8 +189,8 @@
 /* ─── Scrollbar ──────────────────────────────────────────────────────────── */
 .sidebar-sessions::-webkit-scrollbar { width: 3px; }
 .sidebar-sessions::-webkit-scrollbar-track { background: transparent; }
-.sidebar-sessions::-webkit-scrollbar-thumb { background: rgba(124, 106, 247, 0.25); border-radius: 2px; }
-.sidebar-sessions::-webkit-scrollbar-thumb:hover { background: rgba(124, 106, 247, 0.4); }
+.sidebar-sessions::-webkit-scrollbar-thumb { background: rgba(41, 108, 172, 0.25); border-radius: 2px; }
+.sidebar-sessions::-webkit-scrollbar-thumb:hover { background: rgba(41, 108, 172, 0.4); }
 
 /* ─── Footer — config button ────────────────────────────────────────────── */
 .sidebar-footer {
@@ -228,7 +228,7 @@
   height: 28px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1.5px solid rgba(124, 106, 247, 0.25);
+  border: 1.5px solid rgba(41, 108, 172, 0.25);
   flex-shrink: 0;
 }
 
@@ -236,7 +236,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--accent), #4dc8f5);
+  background: linear-gradient(135deg, var(--accent), #5D86AD);
   color: #fff;
   font-size: 12px;
   font-weight: 600;
@@ -246,4 +246,23 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.sidebar-marketplace-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(41, 108, 172, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  transition: color var(--transition-fast);
+}
+
+.sidebar-config-btn.active .sidebar-marketplace-icon,
+.sidebar-config-btn:hover .sidebar-marketplace-icon {
+  color: var(--accent);
+  border-color: rgba(41, 108, 172, 0.50);
 }

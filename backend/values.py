@@ -6,6 +6,8 @@ They take precedence over user preferences when in conflict and should
 be referenced internally any time Bianca is deciding how to act.
 """
 
+import json
+from pathlib import Path
 from typing import TypedDict
 
 
@@ -81,13 +83,26 @@ BIANCA_VALUES: list[Value] = [
 ]
 
 
+_VALUES_OVERRIDE_PATH = Path(__file__).parent / "knowledge" / "values_override.json"
+
+
+def _load_values() -> list[Value]:
+    """Return override values if present, else hardcoded defaults."""
+    if _VALUES_OVERRIDE_PATH.exists():
+        try:
+            return json.loads(_VALUES_OVERRIDE_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            pass  # Fall through to defaults on parse error
+    return BIANCA_VALUES
+
+
 def build_values_block() -> str:
     """Return the formatted values section for injection into the system prompt."""
     lines = ["=== CORE VALUES & DECISION PRINCIPLES ==="]
     lines.append(
         "These principles govern all of Bianca's actions. They apply unconditionally.\n"
     )
-    for v in BIANCA_VALUES:
+    for v in _load_values():
         lines.append(f"**{v['priority']}. {v['title']}**")
         lines.append(v["rule"])
         lines.append("")

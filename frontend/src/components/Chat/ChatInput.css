@@ -18,11 +18,11 @@
 }
 
 .chat-input-container:focus-within {
-  border-color: rgba(124, 106, 247, 0.50);
+  border-color: rgba(41, 108, 172, 0.50);
   box-shadow:
-    0 0 0 3px rgba(124, 106, 247, 0.10),
+    0 0 0 3px rgba(41, 108, 172, 0.10),
     0 8px 32px rgba(0, 0, 0, 0.4),
-    0 0 30px rgba(124, 106, 247, 0.07),
+    0 0 30px rgba(41, 108, 172, 0.07),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
@@ -77,13 +77,13 @@
 /* Ready state — has text to send */
 .chat-input-send:not(:disabled) {
   color: var(--accent);
-  background: rgba(124, 106, 247, 0.10);
+  background: rgba(41, 108, 172, 0.10);
 }
 
 .chat-input-send:not(:disabled):hover {
   background: var(--gradient-accent);
   color: #ffffff;
-  box-shadow: 0 4px 16px rgba(124, 106, 247, 0.40), 0 0 20px rgba(77, 200, 245, 0.15);
+  box-shadow: 0 4px 16px rgba(41, 108, 172, 0.40), 0 0 20px rgba(93, 134, 173, 0.15);
 }
 
 .chat-input-send:disabled {
@@ -93,5 +93,5 @@
 
 .chat-input-send:active:not(:disabled) {
   transform: scale(0.87);
-  box-shadow: 0 2px 8px rgba(124, 106, 247, 0.30);
+  box-shadow: 0 2px 8px rgba(41, 108, 172, 0.30);
 }

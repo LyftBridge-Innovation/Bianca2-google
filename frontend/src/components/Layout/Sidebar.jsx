@@ -9,6 +9,7 @@ export function Sidebar({
   onSelectSession,
   onNewChat,
   onGoToConfig,
+  onGoToMarketplace,
   activeView,
 }) {
   const { sessions, loading, deleteSession } = useSessions(userId);
@@ -139,8 +140,21 @@ export function Sidebar({
         )}
       </div>
 
-      {/* Footer — config button */}
+      {/* Footer — navigation buttons */}
       <div className="sidebar-footer">
+        <button
+          className={`sidebar-config-btn ${activeView === 'marketplace' ? 'active' : ''}`}
+          onClick={onGoToMarketplace}
+        >
+          <div className="sidebar-marketplace-icon">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+              <path d="M2 5.5C2 4.4 2.9 3.5 4 3.5H16C17.1 3.5 18 4.4 18 5.5V7C18 7.8 17.5 8.4 16.8 8.7C16.9 9 17 9.3 17 9.6V15.5C17 16.6 16.1 17.5 15 17.5H5C3.9 17.5 3 16.6 3 15.5V9.6C3 9.3 3.1 9 3.2 8.7C2.5 8.4 2 7.8 2 7V5.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+              <path d="M2 7H18M7 7V3.5M13 7V3.5M7 12H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <span className="sidebar-config-label">Marketplace</span>
+        </button>
+
         <button
           className={`sidebar-config-btn ${activeView === 'config' ? 'active' : ''}`}
           onClick={onGoToConfig}

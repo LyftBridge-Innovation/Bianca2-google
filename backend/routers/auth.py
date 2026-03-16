@@ -76,6 +76,9 @@ async def google_callback(request: GoogleCallbackRequest):
             redirect_uri="postmessage",  # Required for JS popup auth-code flow
         )
 
+        # Google may return previously-granted scopes alongside new ones,
+        # causing a scope mismatch error. Disable strict scope checking.
+        os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
         flow.fetch_token(code=request.code)
         credentials = flow.credentials
 

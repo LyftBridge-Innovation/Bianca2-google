@@ -84,4 +84,115 @@ export async function deleteSkillAPI(skillId, userId) {
   });
 }
 
+/**
+ * Publish a user's skill to the marketplace.
+ */
+export async function publishSkill(userId, skillId) {
+  return apiRequest(`/skills/publish?user_id=${userId}&skill_id=${skillId}`, {
+    method: 'POST',
+  });
+}
+
+/**
+ * Get all skills from the marketplace.
+ */
+export async function getMarketplaceSkills() {
+  return apiRequest('/skills/marketplace');
+}
+
+/**
+ * Install a skill from the marketplace to user's collection.
+ */
+export async function installFromMarketplace(userId, publicSkillId) {
+  return apiRequest(
+    `/skills/install-from-marketplace?user_id=${userId}&public_skill_id=${publicSkillId}`,
+    { method: 'POST' }
+  );
+}
+
+/**
+ * Remove a skill from the marketplace (author only).
+ */
+export async function unpublishSkill(userId, publicSkillId) {
+  return apiRequest(
+    `/skills/unpublish/${publicSkillId}?user_id=${userId}`,
+    { method: 'DELETE' }
+  );
+}
+
+/**
+ * Get all knowledge sections (persona, education, expertise, company).
+ */
+export async function getKnowledge() {
+  return apiRequest('/config/knowledge');
+}
+
+/**
+ * Save updated content to a specific knowledge file.
+ */
+export async function saveKnowledgeFile(category, filename, content) {
+  return apiRequest(`/config/knowledge/${category}/${filename}`, {
+    method: 'PUT',
+    body: JSON.stringify({ content }),
+  });
+}
+
+/**
+ * Get the current values list.
+ */
+export async function getValues() {
+  return apiRequest('/config/values');
+}
+
+/**
+ * Save an updated values list.
+ */
+export async function saveValues(values) {
+  return apiRequest('/config/values', {
+    method: 'PUT',
+    body: JSON.stringify({ values }),
+  });
+}
+
+/**
+ * Get all config settings (identity, model, integrations).
+ */
+export async function getSettings() {
+  return apiRequest('/config/settings');
+}
+
+/**
+ * Update config settings (partial merge).
+ */
+export async function updateSettings(settings) {
+  return apiRequest('/config/settings', {
+    method: 'PUT',
+    body: JSON.stringify({ settings }),
+  });
+}
+
+/**
+ * Get the fully assembled system prompt for preview.
+ */
+export async function getSystemPrompt() {
+  return apiRequest('/config/system-prompt');
+}
+
+/**
+ * Get education data (degrees and courses).
+ */
+export async function getEducation() {
+  return apiRequest('/config/education');
+}
+
+/**
+ * Save education data (degrees and courses).
+ */
+export async function saveEducation(degrees, courses) {
+  return apiRequest('/config/education', {
+    method: 'PUT',
+    body: JSON.stringify({ degrees, courses }),
+  });
+}
+
 export { API_BASE_URL };

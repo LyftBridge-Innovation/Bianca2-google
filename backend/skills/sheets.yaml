@@ -7,7 +7,7 @@ skill:
 api:
   google_api: sheets.googleapis.com
   scopes:
-    - https://www.googleapis.com/auth/spreadsheets.readonly
+    - https://www.googleapis.com/auth/spreadsheets
 
 tools:
   - name: get_spreadsheet
@@ -74,3 +74,27 @@ tools:
           target: name
         - source: "properties.sheetId"
           target: sheet_id
+
+  - name: create_google_sheet
+    description: >
+      Create a new Google Sheet with column headers and optional rows.
+      Use this for tables, trackers, lists, or structured tabular data.
+      Returns a shareable Drive link.
+    handler: "tools.sheets_writer.create_google_sheet"
+    parameters:
+      - name: title
+        type: string
+        required: true
+        description: Spreadsheet title
+      - name: headers
+        type: array
+        items:
+          type: string
+        required: true
+        description: Column header names
+      - name: rows
+        type: array
+        items:
+          type: array
+        required: false
+        description: Data rows — each row is a list of values

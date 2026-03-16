@@ -4,12 +4,13 @@ import { useChat } from '../../hooks/useChat';
 import { Sidebar } from './Sidebar';
 import { ChatWindow } from '../Chat/ChatWindow';
 import { NeuralConfig } from '../../pages/NeuralConfig';
+import { Marketplace } from '../../pages/Marketplace';
 import './AppLayout.css';
 
 export function AppLayout() {
   const { user } = useAuth();
   const [selectedSessionId, setSelectedSessionId] = useState(null);
-  const [activeView, setActiveView] = useState('chat'); // 'chat' | 'config'
+  const [activeView, setActiveView] = useState('chat'); // 'chat' | 'config' | 'marketplace'
 
   const {
     messages,
@@ -42,18 +43,23 @@ export function AppLayout() {
     await sendMessage(message);
   };
 
+  const showSidebar = activeView !== 'config';
+
   return (
     <div className="app-layout">
-      <Sidebar
-        userId={user.userId}
-        userPicture={user.picture}
-        userName={user.name}
-        currentSessionId={sessionId || selectedSessionId}
-        onSelectSession={handleSelectSession}
-        onNewChat={handleNewChat}
-        onGoToConfig={() => setActiveView('config')}
-        activeView={activeView}
-      />
+      {showSidebar && (
+        <Sidebar
+          userId={user.userId}
+          userPicture={user.picture}
+          userName={user.name}
+          currentSessionId={sessionId || selectedSessionId}
+          onSelectSession={handleSelectSession}
+          onNewChat={handleNewChat}
+          onGoToConfig={() => setActiveView('config')}
+          onGoToMarketplace={() => setActiveView('marketplace')}
+          activeView={activeView}
+        />
+      )}
       {activeView === 'chat' ? (
         <ChatWindow
           messages={messages}
@@ -62,8 +68,10 @@ export function AppLayout() {
           streamingContent={streamingContent}
           onSendMessage={handleSendMessage}
         />
-      ) : (
+      ) : activeView === 'config' ? (
         <NeuralConfig onGoToChat={() => setActiveView('chat')} />
+      ) : (
+        <Marketplace onGoToChat={() => setActiveView('chat')} />
       )}
     </div>
   );

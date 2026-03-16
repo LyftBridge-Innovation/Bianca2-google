@@ -10,15 +10,18 @@ Directory layout:
     02_education/    — her training background
     03_expertise/    — domain knowledge
     04_company/      — product and mission context
+    education.json   — user-configured degrees and courses
 """
 
 import os
+import json
 import logging
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 _KNOWLEDGE_DIR = Path(__file__).parent / "knowledge"
+_EDUCATION_PATH = _KNOWLEDGE_DIR / "education.json"
 
 _SECTIONS = [
     ("01_persona",  "Persona & Identity"),
@@ -55,6 +58,49 @@ def _load_section(dir_name: str, section_name: str) -> str:
     return "\n\n".join(parts)
 
 
+def _load_education_block() -> str:
+    """Load configured education data and format as Bianca's background."""
+    if not _EDUCATION_PATH.exists():
+        return ""
+
+    try:
+        data = json.loads(_EDUCATION_PATH.read_text(encoding="utf-8"))
+    except Exception as exc:
+        logger.error(f"[KnowledgeLoader] Could not read education.json: {exc}")
+        return ""
+
+    degrees = data.get("degrees", [])
+    courses = data.get("courses", [])
+
+    if not degrees and not courses:
+        return ""
+
+    parts = ["--- YOUR EDUCATIONAL BACKGROUND ---"]
+    parts.append("This is YOUR education — these are degrees YOU earned and courses YOU completed. When asked about your education, speak in first person about these credentials.")
+
+    if degrees:
+        parts.append("\n**Your Academic Credentials:**")
+        for d in degrees:
+            credential = f"- You hold a {d.get('level', 'degree')}: {d.get('name', 'Unnamed')}"
+            if d.get('field'):
+                credential += f" in {d['field']}"
+            if d.get('institution'):
+                credential += f" from {d['institution']}"
+            parts.append(credential)
+
+    if courses:
+        parts.append("\n**Courses You Have Completed:**")
+        for c in courses:
+            course_line = f"- {c.get('code', '')}: {c.get('name', 'Unnamed')}"
+            if c.get('description'):
+                course_line += f" — {c['description']}"
+            parts.append(course_line)
+
+    parts.append("\nWhen discussing your education, refer to these as YOUR credentials. Say 'I studied...' or 'I have a degree in...' — this is your background.")
+
+    return "\n".join(parts)
+
+
 def build_knowledge_block() -> str:
     """
     Assemble and return the full knowledge block for the system prompt.
@@ -66,6 +112,11 @@ def build_knowledge_block() -> str:
         section_text = _load_section(dir_name, section_name)
         if section_text:
             sections.append(section_text)
+
+    # Add user-configured education data
+    education_block = _load_education_block()
+    if education_block:
+        sections.append(education_block)
 
     if not sections:
         logger.warning("[KnowledgeLoader] No knowledge files found — skipping knowledge block.")

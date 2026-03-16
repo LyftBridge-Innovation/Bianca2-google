@@ -15,6 +15,7 @@ This module owns layers 1–4. Memory is injected separately in the chat router.
 from datetime import datetime
 from knowledge_loader import build_knowledge_block
 from values import build_values_block
+from settings_loader import load_settings
 
 
 # ---------------------------------------------------------------------------
@@ -22,11 +23,14 @@ from values import build_values_block
 # ---------------------------------------------------------------------------
 
 def _build_identity_block() -> str:
+    settings = load_settings()
+    ai_name = settings.get("ai_name", "Bianca")
+    ai_role = settings.get("ai_role", "AI Chief of Staff")
     now = datetime.now()
     date_str = now.strftime("%A, %B %d, %Y")   # e.g., "Friday, March 13, 2026"
     time_str = now.strftime("%I:%M %p")          # e.g., "02:45 PM"
     return (
-        f"You are Bianca, an AI Chief of Staff.\n\n"
+        f"You are {ai_name}, an {ai_role}.\n\n"
         f"Today is {date_str}. Current time: {time_str}.\n"
         f"Use this as your reference for all time-based queries, scheduling, and calendar operations."
     )
@@ -69,6 +73,9 @@ def get_system_prompt() -> str:
     so the date/time is always accurate. Knowledge and values are fast
     (small text files + in-memory constants).
     """
+    settings = load_settings()
+    custom_prompt = settings.get("custom_prompt", "").strip()
+
     blocks = [
         _build_identity_block(),
         build_knowledge_block(),
@@ -77,4 +84,10 @@ def get_system_prompt() -> str:
     ]
 
     # Drop any empty blocks (e.g. if knowledge files are missing)
-    return "\n\n".join(block for block in blocks if block.strip())
+    assembled = "\n\n".join(block for block in blocks if block.strip())
+
+    # Prepend custom prompt if set
+    if custom_prompt:
+        assembled = f"{custom_prompt}\n\n{assembled}"
+
+    return assembled

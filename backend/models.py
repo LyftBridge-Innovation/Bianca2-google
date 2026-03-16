@@ -244,3 +244,38 @@ class FirestoreCollections:
             ref.delete()
             return True
         return False
+
+    # ── Public Skills (Marketplace) ────────────────────────────────────────
+
+    def create_public_skill(self, skill_data: Dict[str, Any]) -> str:
+        """Publish a skill to the marketplace. Returns skill_id."""
+        doc_ref = self.db.collection('public_skills').document()
+        skill_data['skill_id'] = doc_ref.id
+        skill_data['install_count'] = 0
+        doc_ref.set(skill_data)
+        return doc_ref.id
+
+    def list_public_skills(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """List all marketplace skills, sorted by install_count desc."""
+        docs = self.db.collection('public_skills')\
+            .order_by('install_count', direction=firestore.Query.DESCENDING)\
+            .limit(limit).stream()
+        return [doc.to_dict() for doc in docs]
+
+    def get_public_skill(self, skill_id: str) -> Optional[Dict[str, Any]]:
+        """Get a single marketplace skill by ID."""
+        doc = self.db.collection('public_skills').document(skill_id).get()
+        return doc.to_dict() if doc.exists else None
+
+    def delete_public_skill(self, skill_id: str) -> bool:
+        """Delete a marketplace skill (author only). Returns True if existed."""
+        doc_ref = self.db.collection('public_skills').document(skill_id)
+        if doc_ref.get().exists:
+            doc_ref.delete()
+            return True
+        return False
+
+    def increment_install_count(self, skill_id: str) -> None:
+        """Increment install counter for a marketplace skill."""
+        doc_ref = self.db.collection('public_skills').document(skill_id)
+        doc_ref.update({'install_count': firestore.Increment(1)})

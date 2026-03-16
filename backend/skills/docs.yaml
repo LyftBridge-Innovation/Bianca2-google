@@ -7,7 +7,7 @@ skill:
 api:
   google_api: docs.googleapis.com
   scopes:
-    - https://www.googleapis.com/auth/documents.readonly
+    - https://www.googleapis.com/auth/documents
 
 tools:
   - name: get_document
@@ -46,3 +46,19 @@ tools:
           target: title
         - source: body
           target: body
+
+  - name: create_google_doc
+    description: >
+      Create a new Google Doc with a title and text content.
+      Use this to write reports, summaries, drafts, briefs,
+      or any structured text document. Returns a shareable Drive link.
+    handler: "tools.docs_writer.create_google_doc"
+    parameters:
+      - name: title
+        type: string
+        required: true
+        description: Document title
+      - name: content
+        type: string
+        required: true
+        description: Full document body text

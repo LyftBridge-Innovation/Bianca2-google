@@ -10,63 +10,70 @@
 
 /* ─── Design Tokens ──────────────────────────────────────────────────────── */
 :root {
-  /* Backgrounds — subtle violet-tinted deep space */
-  --bg-base:        #07070f;
-  --bg-surface:     #0b0b18;
-  --bg-elevated:    #11111e;
-  --bg-hover:       #17172a;
-  --bg-active:      #1d1d35;
-  --bg-glass:       rgba(11, 11, 24, 0.72);
+  /* Backgrounds — Lyftbridge dark blue-tinted */
+  --bg-base:        #0a0d12;
+  --bg-surface:     #0f1318;
+  --bg-elevated:    #151a22;
+  --bg-hover:       #1b2029;
+  --bg-active:      #212630;
+  --bg-glass:       rgba(15, 19, 24, 0.75);
   --bg-glass-light: rgba(255, 255, 255, 0.03);
 
   /* Borders */
-  --border-subtle: #191928;
-  --border-muted:  #24243e;
-  --border-strong: #363660;
-  --border-glow:   rgba(124, 106, 247, 0.3);
+  --border-subtle: #1a1f28;
+  --border-muted:  #252b38;
+  --border-strong: #3a4355;
+  --border-glow:   rgba(41, 108, 172, 0.35);
 
   /* Text */
-  --text-primary:   #eeeaf8;
-  --text-secondary: #7878a0;
-  --text-muted:     #3e3e58;
+  --text-primary:   #f0f4f8;
+  --text-secondary: #8a9aad;
+  --text-muted:     #4a5568;
 
-  /* Primary Accent — Electric Violet */
-  --accent:         #7c6af7;
-  --accent-dim:     rgba(124, 106, 247, 0.15);
-  --accent-glow:    rgba(124, 106, 247, 0.08);
-  --accent-border:  rgba(124, 106, 247, 0.35);
-  --accent-focus:   rgba(124, 106, 247, 0.45);
-  --accent-halo:    rgba(124, 106, 247, 0.08);
-  --accent-ambient: rgba(124, 106, 247, 0.12);
+  /* Primary Accent — Lyftbridge Blue */
+  --accent:         #296CAC;
+  --accent-dim:     rgba(41, 108, 172, 0.15);
+  --accent-glow:    rgba(41, 108, 172, 0.08);
+  --accent-border:  rgba(41, 108, 172, 0.40);
+  --accent-focus:   rgba(41, 108, 172, 0.50);
+  --accent-halo:    rgba(41, 108, 172, 0.10);
+  --accent-ambient: rgba(41, 108, 172, 0.12);
 
-  /* Gold Accent — Brand / Display */
-  --accent-gold:         #e8b86d;
-  --accent-gold-dim:     rgba(232, 184, 109, 0.15);
-  --accent-gold-glow:    rgba(232, 184, 109, 0.10);
-  --accent-gold-border:  rgba(232, 184, 109, 0.35);
-  --accent-gold-ambient: rgba(232, 184, 109, 0.08);
+  /* Secondary Blue — Casamassima Blue 1 */
+  --accent-secondary:      #5D86AD;
+  --accent-secondary-dim:  rgba(93, 134, 173, 0.15);
+  --accent-secondary-glow: rgba(93, 134, 173, 0.10);
 
-  /* Blue Accent — Gradients / Cool highlights */
-  --accent-blue:      #4dc8f5;
-  --accent-blue-dim:  rgba(77, 200, 245, 0.12);
-  --accent-blue-glow: rgba(77, 200, 245, 0.06);
-  --accent-cool:      rgba(77, 200, 245, 0.06);
+  /* Soft Blue — Casamassima Blue 2 */
+  --accent-soft:      #93B1D4;
+  --accent-soft-dim:  rgba(147, 177, 212, 0.12);
+  --accent-soft-glow: rgba(147, 177, 212, 0.06);
 
-  /* Gradients */
-  --gradient-accent:    linear-gradient(135deg, #7c6af7 0%, #4dc8f5 100%);
-  --gradient-gold:      linear-gradient(135deg, #e8b86d 0%, #f5d090 100%);
-  --gradient-text:      linear-gradient(135deg, #e8b86d 0%, #eeeaf8 55%, #a89af5 100%);
-  --gradient-text-gold: linear-gradient(155deg, #f5d090 0%, #eeeaf8 100%);
-  --gradient-surface:   linear-gradient(160deg, #0b0b18 0%, #0e0e22 100%);
-  --gradient-hover:     linear-gradient(90deg, rgba(124, 106, 247, 0.09) 0%, transparent 100%);
-  --gradient-active:    linear-gradient(90deg, rgba(124, 106, 247, 0.14) 0%, transparent 100%);
+  /* Deep Blue — Casamassima Blue 3 (emphasis/CTA) */
+  --accent-deep:      #14729B;
+  --accent-deep-dim:  rgba(20, 114, 155, 0.15);
+  --accent-deep-glow: rgba(20, 114, 155, 0.10);
+
+  /* Light Blue Tint (for backgrounds) */
+  --accent-tint:      #E8EFF7;
+  --accent-tint-dim:  rgba(232, 239, 247, 0.08);
+
+  /* Gradients — Lyftbridge blue family */
+  --gradient-accent:    linear-gradient(135deg, #296CAC 0%, #14729B 100%);
+  --gradient-brand:     linear-gradient(135deg, #296CAC 0%, #5D86AD 100%);
+  --gradient-text:      linear-gradient(135deg, #93B1D4 0%, #f0f4f8 55%, #5D86AD 100%);
+  --gradient-text-gold: linear-gradient(155deg, #5D86AD 0%, #f0f4f8 100%);
+  --gradient-surface:   linear-gradient(160deg, #0f1318 0%, #151a22 100%);
+  --gradient-hover:     linear-gradient(90deg, rgba(41, 108, 172, 0.09) 0%, transparent 100%);
+  --gradient-active:    linear-gradient(90deg, rgba(41, 108, 172, 0.14) 0%, transparent 100%);
 
   /* Semantic */
-  --color-danger:    #f06565;
-  --color-danger-bg: rgba(240, 101, 101, 0.10);
+  --color-danger:    #e05252;
+  --color-danger-bg: rgba(224, 82, 82, 0.10);
+  --color-success:   #2ecc71;
+  --color-success-bg: rgba(46, 204, 113, 0.10);
   --shadow-dark:     rgba(0, 0, 0, 0.45);
-  --shadow-accent:   rgba(124, 106, 247, 0.22);
-  --shadow-gold:     rgba(232, 184, 109, 0.18);
+  --shadow-accent:   rgba(41, 108, 172, 0.25);
 
   /* Glass shorthand */
   --glass-backdrop: blur(24px) saturate(180%);

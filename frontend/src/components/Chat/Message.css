@@ -30,7 +30,7 @@
   justify-content: center;
   flex-shrink: 0;
   margin-top: 2px;
-  box-shadow: 0 0 12px rgba(124, 106, 247, 0.35);
+  box-shadow: 0 0 12px rgba(41, 108, 172, 0.35);
 }
 
 /* ─── Bubble ─────────────────────────────────────────────────────────────── */
@@ -46,22 +46,22 @@
   max-width: 72%;
   background: linear-gradient(
     135deg,
-    rgba(124, 106, 247, 0.13) 0%,
-    rgba(77, 200, 245, 0.06) 100%
+    rgba(41, 108, 172, 0.13) 0%,
+    rgba(93, 134, 173, 0.06) 100%
   );
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(124, 106, 247, 0.28);
+  border: 1px solid rgba(41, 108, 172, 0.28);
   border-radius: 20px 20px 4px 20px;
   color: var(--text-primary);
   font-weight: 400;
   white-space: pre-wrap;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(124, 106, 247, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(41, 108, 172, 0.08);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .message-user .message-content:hover {
-  border-color: rgba(124, 106, 247, 0.42);
-  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.3), 0 0 20px rgba(124, 106, 247, 0.08);
+  border-color: rgba(41, 108, 172, 0.42);
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.3), 0 0 20px rgba(41, 108, 172, 0.08);
 }
 
 .message-assistant .message-content {
@@ -91,9 +91,9 @@
 
 /* Inline code — violet tinted */
 .message-assistant .message-content code {
-  background: rgba(124, 106, 247, 0.12);
-  border: 1px solid rgba(124, 106, 247, 0.22);
-  color: #a89af5;
+  background: rgba(41, 108, 172, 0.12);
+  border: 1px solid rgba(41, 108, 172, 0.22);
+  color: #5D86AD;
   font-family: var(--font-mono);
   font-size: 13px;
   padding: 1px 6px;

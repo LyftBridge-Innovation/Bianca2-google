@@ -15,6 +15,7 @@ from memory_utils import generate_human_readable
 from summarization import summarize_session_sync
 from memory_retrieval import retrieve_memories_for_message, format_memory_injection
 from skill_matcher import match_skills, build_skills_block
+from settings_loader import load_settings
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -23,15 +24,30 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 # how many turns are sent as context to Gemini per request.
 MAX_HISTORY_MESSAGES = 20
 
-# Initialize Vertex AI Gemini LLM with tool calling (uses Google Cloud credits)
-# max_retries enables exponential backoff for 429 rate limit errors
-llm = ChatVertexAI(
-    model="gemini-2.5-flash",
-    project=GCP_PROJECT_ID,
-    location=GCP_LOCATION,
-    temperature=0.7,
-    max_retries=6,  # Retry with exponential backoff (4s, 8s, 16s, 32s, 64s, 128s)
-).bind_tools(ALL_TOOLS)
+# LLM cache — recreated when model/temperature settings change
+_llm_cache = {"model": None, "temperature": None, "instance": None}
+
+
+def _get_llm():
+    """Return the LLM instance, recreating if settings changed."""
+    settings = load_settings()
+    model = settings.get("model", "gemini-2.5-flash")
+    temperature = settings.get("temperature", 0.7)
+
+    if (_llm_cache["model"] != model or _llm_cache["temperature"] != temperature
+            or _llm_cache["instance"] is None):
+        _llm_cache["model"] = model
+        _llm_cache["temperature"] = temperature
+        _llm_cache["instance"] = ChatVertexAI(
+            model=model,
+            project=GCP_PROJECT_ID,
+            location=GCP_LOCATION,
+            temperature=temperature,
+            max_retries=6,
+        ).bind_tools(ALL_TOOLS)
+
+    return _llm_cache["instance"]
+
 
 # Initialize Firestore collections
 fs = FirestoreCollections()
@@ -146,7 +162,7 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
         session_tool_calls = []
         
         # Invoke LLM with tools
-        response = llm.invoke(messages)
+        response = _get_llm().invoke(messages)
         
         # Handle tool calls if present
         max_iterations = 5
@@ -204,7 +220,7 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
                 ))
             
             # Get next response from LLM
-            response = llm.invoke(messages)
+            response = _get_llm().invoke(messages)
         
         # Extract final text response
         if isinstance(response.content, str):
@@ -328,7 +344,7 @@ async def stream_chat_response(request: ChatRequest, background_tasks: Backgroun
         session_tool_calls = []
         
         # Run agentic loop FIRST (tool calls complete before streaming)
-        response = llm.invoke(messages)
+        response = _get_llm().invoke(messages)
         
         max_iterations = 5
         iteration = 0
@@ -380,13 +396,13 @@ async def stream_chat_response(request: ChatRequest, background_tasks: Backgroun
                     tool_call_id=tool_call["id"]
                 ))
             
-            response = llm.invoke(messages)
+            response = _get_llm().invoke(messages)
         
         # Now stream the final response token by token
         # Need to reinvoke with streaming to get tokens
         accumulated_content = ""
         
-        for chunk in llm.stream(messages):
+        for chunk in _get_llm().stream(messages):
             if hasattr(chunk, 'content') and chunk.content:
                 # Handle both string and list content from streaming chunks
                 if isinstance(chunk.content, str):

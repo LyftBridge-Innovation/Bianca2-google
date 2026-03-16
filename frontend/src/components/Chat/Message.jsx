@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import './Message.css';
 
 export function Message({ message, isStreaming = false }) {
@@ -52,7 +53,12 @@ export function Message({ message, isStreaming = false }) {
       <div className="message-assistant-inner">
         <div className="message-avatar">B</div>
         <div className="message-content">
-          <ReactMarkdown>{displayedContent}</ReactMarkdown>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{ a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" /> }}
+          >
+            {displayedContent}
+          </ReactMarkdown>
           {isStreaming && <span className="typing-cursor">▊</span>}
         </div>
       </div>
