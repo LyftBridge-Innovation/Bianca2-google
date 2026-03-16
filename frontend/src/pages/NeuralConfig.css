@@ -1974,3 +1974,225 @@
   font-size: 11px;
   color: var(--text-muted);
 }
+
+/* ── Tasks Tab ──────────────────────────────────────────────────────────────── */
+
+.nc-tasks-filters {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.nc-tasks-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid var(--border-muted);
+  border-radius: 20px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color var(--transition-base), color var(--transition-base),
+              background var(--transition-base);
+}
+
+.nc-tasks-filter:hover {
+  border-color: rgba(41, 108, 172, 0.35);
+  color: var(--text-primary);
+}
+
+.nc-tasks-filter.active {
+  border-color: rgba(41, 108, 172, 0.50);
+  color: var(--accent);
+  background: rgba(41, 108, 172, 0.12);
+}
+
+.nc-tasks-filter-count {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.nc-tasks-filter.active .nc-tasks-filter-count {
+  background: rgba(41, 108, 172, 0.20);
+}
+
+.nc-tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nc-task-card {
+  padding: 16px 18px;
+  background: var(--bg-glass);
+  backdrop-filter: var(--glass-backdrop);
+  -webkit-backdrop-filter: var(--glass-backdrop);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  transition: border-color var(--transition-base);
+}
+
+.nc-task-card:hover {
+  border-color: rgba(41, 108, 172, 0.18);
+}
+
+.nc-task-card.nc-task-running {
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
+.nc-task-card.nc-task-completed {
+  border-color: rgba(16, 185, 129, 0.20);
+}
+
+.nc-task-card.nc-task-failed {
+  border-color: rgba(239, 68, 68, 0.20);
+}
+
+.nc-task-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nc-task-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.nc-task-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.nc-task-type {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.nc-task-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.nc-task-status {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.nc-task-progress {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nc-task-progress-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.nc-task-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+.nc-task-progress-text {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.nc-task-result {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nc-task-result-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  background: rgba(16, 185, 129, 0.10);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: var(--radius-md);
+  color: #10b981;
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background var(--transition-base), border-color var(--transition-base);
+}
+
+.nc-task-result-link:hover {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.40);
+}
+
+.nc-task-result-id {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.nc-task-error {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  border-radius: var(--radius-md);
+  color: #ef4444;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.nc-task-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  justify-content: flex-end;
+}
+
+.nc-task-cancel-btn,
+.nc-task-delete-btn {
+  padding: 4px 12px;
+  background: transparent;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color var(--transition-base), color var(--transition-base);
+}
+
+.nc-task-cancel-btn {
+  color: #f59e0b;
+}
+
+.nc-task-cancel-btn:hover {
+  border-color: rgba(245, 158, 11, 0.40);
+  color: #fbbf24;
+}
+
+.nc-task-delete-btn {
+  color: var(--text-muted);
+}
+
+.nc-task-delete-btn:hover {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}

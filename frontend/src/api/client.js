@@ -195,4 +195,57 @@ export async function saveEducation(degrees, courses) {
   });
 }
 
+// ── Task API ────────────────────────────────────────────────────────────────
+
+/**
+ * Create a new background task.
+ */
+export async function createTask(userId, taskType, parameters, sessionId = null) {
+  return apiRequest('/tasks/', {
+    method: 'POST',
+    body: JSON.stringify({
+      user_id: userId,
+      task_type: taskType,
+      parameters,
+      session_id: sessionId,
+    }),
+  });
+}
+
+/**
+ * List tasks for a user.
+ */
+export async function getTasks(userId, status = null, limit = 50) {
+  let url = `/tasks/?user_id=${userId}&limit=${limit}`;
+  if (status) {
+    url += `&status=${status}`;
+  }
+  return apiRequest(url);
+}
+
+/**
+ * Get details of a specific task.
+ */
+export async function getTask(taskId, userId) {
+  return apiRequest(`/tasks/${taskId}?user_id=${userId}`);
+}
+
+/**
+ * Cancel a pending task.
+ */
+export async function cancelTask(taskId, userId) {
+  return apiRequest(`/tasks/${taskId}/cancel?user_id=${userId}`, {
+    method: 'POST',
+  });
+}
+
+/**
+ * Delete a completed or failed task.
+ */
+export async function deleteTaskAPI(taskId, userId) {
+  return apiRequest(`/tasks/${taskId}?user_id=${userId}`, {
+    method: 'DELETE',
+  });
+}
+
 export { API_BASE_URL };

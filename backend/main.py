@@ -7,6 +7,7 @@ from routers.voice import router as voice_router
 from routers.auth import router as auth_router
 from routers.skills import router as skills_router
 from routers.config import router as config_router
+from routers.tasks import router as tasks_router
 
 app = FastAPI(title="AI Chief of Staff", version="0.3.0")
 
@@ -26,6 +27,7 @@ app.include_router(voice_router)
 app.include_router(auth_router)
 app.include_router(skills_router)
 app.include_router(config_router)
+app.include_router(tasks_router)
 
 
 @app.get("/")

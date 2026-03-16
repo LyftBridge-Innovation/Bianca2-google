@@ -97,6 +97,34 @@ class EntityMemory(BaseModel):
     vertex_doc_id: Optional[str] = None
 
 
+class Task(BaseModel):
+    """Background task document for async operations."""
+    task_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    session_id: Optional[str] = None
+
+    # Task definition
+    task_type: str  # "create_doc", "send_email", "create_slides", "create_sheet"
+    parameters: Dict[str, Any] = Field(default_factory=dict)
+
+    # Status tracking
+    status: str = "pending"  # pending, running, completed, failed
+    progress: int = 0  # 0-100 percentage
+    progress_message: str = ""
+
+    # Results
+    result: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+
+    # Timing
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+
+    # Cloud Tasks metadata (for production)
+    cloud_task_name: Optional[str] = None
+
+
 # ── Firestore Collection Managers ────────────────────────────────────────────
 
 
@@ -279,3 +307,39 @@ class FirestoreCollections:
         """Increment install counter for a marketplace skill."""
         doc_ref = self.db.collection('public_skills').document(skill_id)
         doc_ref.update({'install_count': firestore.Increment(1)})
+
+    # ── Tasks (Background Job Queue) ───────────────────────────────────────
+
+    def create_task(self, task: 'Task') -> str:
+        """Create a new task and return its ID."""
+        self.db.collection('tasks').document(task.task_id).set(task.model_dump())
+        return task.task_id
+
+    def get_task(self, task_id: str) -> Optional['Task']:
+        """Get a task by ID."""
+        doc = self.db.collection('tasks').document(task_id).get()
+        if doc.exists:
+            return Task(**doc.to_dict())
+        return None
+
+    def update_task(self, task_id: str, **updates) -> None:
+        """Update specific fields on a task."""
+        self.db.collection('tasks').document(task_id).update(updates)
+
+    def list_tasks(self, user_id: str, status: Optional[str] = None, limit: int = 50) -> List['Task']:
+        """List tasks for a user, optionally filtered by status."""
+        query = self.db.collection('tasks').where('user_id', '==', user_id)
+        if status:
+            query = query.where('status', '==', status)
+        docs = query.limit(limit).stream()
+        tasks = [Task(**doc.to_dict()) for doc in docs]
+        tasks.sort(key=lambda t: t.created_at, reverse=True)
+        return tasks
+
+    def delete_task(self, task_id: str) -> bool:
+        """Delete a task. Returns True if it existed."""
+        doc_ref = self.db.collection('tasks').document(task_id)
+        if doc_ref.get().exists:
+            doc_ref.delete()
+            return True
+        return False

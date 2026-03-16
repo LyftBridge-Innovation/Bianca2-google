@@ -14,6 +14,9 @@ import {
   getSystemPrompt,
   getEducation,
   saveEducation,
+  getTasks,
+  cancelTask,
+  deleteTaskAPI,
 } from '../api/client';
 import './NeuralConfig.css';
 
@@ -112,6 +115,11 @@ export function NeuralConfig({ onGoToChat }) {
   const [authInput, setAuthInput] = useState('');
   const [constraintInput, setConstraintInput] = useState('');
 
+  // ── Tasks tab ─────────────────────────────────────────────────────────────
+  const [tasks, setTasks] = useState([]);
+  const [tasksLoading, setTasksLoading] = useState(false);
+  const [tasksFilter, setTasksFilter] = useState('all');
+
   // ── Lazy-load data on tab visit ────────────────────────────────────────────
   useEffect(() => {
     const needsSettings = ['persona', 'prompt', 'integrations'].includes(activeTab);
@@ -123,6 +131,28 @@ export function NeuralConfig({ onGoToChat }) {
         .finally(() => setSettingsLoading(false));
     }
   }, [activeTab, settings, settingsLoading]);
+
+  // Load tasks when tasks tab is selected
+  useEffect(() => {
+    if (activeTab === 'tasks' && !tasksLoading && tasks.length === 0) {
+      setTasksLoading(true);
+      getTasks(user.userId)
+        .then((data) => setTasks(data || []))
+        .catch((err) => console.error('Failed to load tasks:', err))
+        .finally(() => setTasksLoading(false));
+    }
+  }, [activeTab, user.userId]);
+
+  // Refresh tasks periodically when on tasks tab
+  useEffect(() => {
+    if (activeTab !== 'tasks') return;
+    const interval = setInterval(() => {
+      getTasks(user.userId)
+        .then((data) => setTasks(data || []))
+        .catch((err) => console.error('Failed to refresh tasks:', err));
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [activeTab, user.userId]);
 
   useEffect(() => {
     if (activeTab === 'persona' && personaSubTab === 'knowledge' && sections === null && !knowledgeLoading) {
@@ -289,6 +319,62 @@ export function NeuralConfig({ onGoToChat }) {
       .finally(() => setPromptLoading(false));
   };
 
+  // ── Task handlers ─────────────────────────────────────────────────────────
+  const handleCancelTask = async (taskId) => {
+    try {
+      await cancelTask(taskId, user.userId);
+      setTasks(tasks.map((t) => t.task_id === taskId ? { ...t, status: 'failed', error: 'Cancelled by user' } : t));
+    } catch (err) {
+      alert(`Failed to cancel: ${err.message}`);
+    }
+  };
+
+  const handleDeleteTask = async (taskId) => {
+    try {
+      await deleteTaskAPI(taskId, user.userId);
+      setTasks(tasks.filter((t) => t.task_id !== taskId));
+    } catch (err) {
+      alert(`Failed to delete: ${err.message}`);
+    }
+  };
+
+  const filteredTasks = tasks.filter((t) => {
+    if (tasksFilter === 'all') return true;
+    return t.status === tasksFilter;
+  });
+
+  const getTaskIcon = (type) => {
+    switch (type) {
+      case 'create_doc': return '📄';
+      case 'send_email': return '📧';
+      case 'draft_email': return '✉️';
+      case 'create_slides': return '📊';
+      case 'create_sheet': return '📋';
+      default: return '⚙️';
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'pending': return '#f59e0b';
+      case 'running': return '#3b82f6';
+      case 'completed': return '#10b981';
+      case 'failed': return '#ef4444';
+      default: return '#6b7280';
+    }
+  };
+
+  const formatTimeAgo = (iso) => {
+    if (!iso) return '';
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  };
+
   // ── Utils ──────────────────────────────────────────────────────────────────
   const formatDate = (iso) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   const formatSize = (b) => b < 1024 ? `${b} B` : `${(b / 1024).toFixed(1)} KB`;
@@ -312,6 +398,7 @@ export function NeuralConfig({ onGoToChat }) {
     { id: 'access', label: 'Access Control', icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><rect x="4" y="8" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M6 8V5.5a3 3 0 016 0V8" stroke="currentColor" strokeWidth="1.3"/></svg> },
     { id: 'values', label: 'Values', icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M9 2L10.8 6.8L16 7.2L12.2 10.6L13.4 15.6L9 13L4.6 15.6L5.8 10.6L2 7.2L7.2 6.8L9 2Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg> },
     { id: 'integrations', label: 'Integrations', icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="2" stroke="currentColor" strokeWidth="1.3"/><path d="M9 2v3M9 13v3M2 9h3M13 9h3M4.2 4.2l2.1 2.1M11.7 11.7l2.1 2.1M4.2 13.8l2.1-2.1M11.7 6.3l2.1-2.1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg> },
+    { id: 'tasks', label: 'Tasks', icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><rect x="3" y="3" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.3"/><path d="M6 9l2 2 4-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg> },
     { id: 'security', label: 'Security', icon: <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M9 2L3 5v4c0 4 2.5 6.5 6 8 3.5-1.5 6-4 6-8V5L9 2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M7 9l2 2 3-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg> },
   ];
 
@@ -1033,6 +1120,84 @@ export function NeuralConfig({ onGoToChat }) {
                 </div>
               )}
             </>
+          )}
+        </section>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════════ */}
+      {/* TASKS TAB */}
+      {/* ════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'tasks' && (
+        <section className="nc-section">
+          <h2 className="nc-section-title">Background Tasks</h2>
+          <p className="nc-section-desc">Monitor long-running operations like document creation, emails, and presentations.</p>
+
+          <div className="nc-tasks-filters">
+            {['all', 'pending', 'running', 'completed', 'failed'].map((f) => (
+              <button key={f} className={`nc-tasks-filter${tasksFilter === f ? ' active' : ''}`} onClick={() => setTasksFilter(f)}>
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+                {f !== 'all' && <span className="nc-tasks-filter-count">{tasks.filter((t) => t.status === f).length}</span>}
+                {f === 'all' && <span className="nc-tasks-filter-count">{tasks.length}</span>}
+              </button>
+            ))}
+          </div>
+
+          {tasksLoading ? <div className="nc-loading">Loading tasks...</div> : filteredTasks.length === 0 ? (
+            <div className="nc-empty-state">
+              <div className="nc-empty-state-text">{tasksFilter === 'all' ? 'No tasks yet' : `No ${tasksFilter} tasks`}</div>
+              <div className="nc-empty-state-hint">Tasks are created automatically when the AI performs long-running operations</div>
+            </div>
+          ) : (
+            <div className="nc-tasks-list">
+              {filteredTasks.map((task) => (
+                <div key={task.task_id} className={`nc-task-card nc-task-${task.status}`}>
+                  <div className="nc-task-card-header">
+                    <span className="nc-task-icon">{getTaskIcon(task.task_type)}</span>
+                    <div className="nc-task-info">
+                      <div className="nc-task-type">{task.task_type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</div>
+                      <div className="nc-task-time">{formatTimeAgo(task.created_at)}</div>
+                    </div>
+                    <span className="nc-task-status" style={{ color: getStatusColor(task.status) }}>
+                      {task.status.charAt(0).toUpperCase() + task.status.slice(1)}
+                    </span>
+                  </div>
+
+                  {task.status === 'running' && (
+                    <div className="nc-task-progress">
+                      <div className="nc-task-progress-bar">
+                        <div className="nc-task-progress-fill" style={{ width: `${task.progress}%` }} />
+                      </div>
+                      <span className="nc-task-progress-text">{task.progress_message || `${task.progress}%`}</span>
+                    </div>
+                  )}
+
+                  {task.status === 'completed' && task.result && (
+                    <div className="nc-task-result">
+                      {task.result.url && (
+                        <a href={task.result.url} target="_blank" rel="noopener noreferrer" className="nc-task-result-link">
+                          Open Result
+                        </a>
+                      )}
+                      {task.result.doc_id && <span className="nc-task-result-id">ID: {task.result.doc_id}</span>}
+                      {task.result.message_id && <span className="nc-task-result-id">Sent</span>}
+                    </div>
+                  )}
+
+                  {task.status === 'failed' && task.error && (
+                    <div className="nc-task-error">{task.error}</div>
+                  )}
+
+                  <div className="nc-task-actions">
+                    {task.status === 'pending' && (
+                      <button className="nc-task-cancel-btn" onClick={() => handleCancelTask(task.task_id)}>Cancel</button>
+                    )}
+                    {(task.status === 'completed' || task.status === 'failed') && (
+                      <button className="nc-task-delete-btn" onClick={() => handleDeleteTask(task.task_id)}>Remove</button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </section>
       )}
