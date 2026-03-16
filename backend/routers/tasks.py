@@ -126,15 +126,16 @@ async def stream_tasks(user_id: str):
         """Generate SSE events from Firestore changes."""
         fs = FirestoreCollections()
         queue = asyncio.Queue()
+        loop = asyncio.get_event_loop()
 
         def on_snapshot(col_snapshot, changes, read_time):
-            """Callback for Firestore real-time updates."""
+            """Callback for Firestore real-time updates (runs in Firestore thread)."""
             for change in changes:
                 if change.type.name in ('ADDED', 'MODIFIED'):
                     task_data = change.document.to_dict()
-                    # Only send if it belongs to this user
                     if task_data.get('user_id') == user_id:
-                        asyncio.create_task(queue.put(task_data))
+                        # Thread-safe: push into asyncio queue from Firestore thread
+                        loop.call_soon_threadsafe(queue.put_nowait, task_data)
 
         # Subscribe to user's tasks
         query = fs.db.collection('tasks').where('user_id', '==', user_id)
@@ -144,18 +145,20 @@ async def stream_tasks(user_id: str):
             # Send initial connection event
             yield f"data: {json.dumps({'type': 'connected'})}\n\n"
 
-            # Stream updates
+            # Stream updates with keepalive loop
             while True:
-                task_data = await asyncio.wait_for(queue.get(), timeout=30.0)
-                yield f"data: {json.dumps(task_data, default=str)}\n\n"
+                try:
+                    task_data = await asyncio.wait_for(queue.get(), timeout=30.0)
+                    yield f"data: {json.dumps(task_data, default=str)}\n\n"
+                except asyncio.TimeoutError:
+                    # Send keepalive to prevent connection drop
+                    yield f"data: {json.dumps({'type': 'keepalive'})}\n\n"
 
-        except asyncio.TimeoutError:
-            # Send keepalive every 30 seconds
-            yield f"data: {json.dumps({'type': 'keepalive'})}\n\n"
+        except asyncio.CancelledError:
+            pass
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
         finally:
-            # Unsubscribe when client disconnects
             watch.unsubscribe()
 
     return StreamingResponse(
