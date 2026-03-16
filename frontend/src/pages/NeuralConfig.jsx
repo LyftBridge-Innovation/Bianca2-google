@@ -17,6 +17,7 @@ import {
   getTasks,
   cancelTask,
   deleteTaskAPI,
+  retryTask,
   API_BASE_URL,
 } from '../api/client';
 import './NeuralConfig.css';
@@ -58,6 +59,7 @@ export function NeuralConfig({ onGoToChat }) {
   const { user, logout } = useAuth();
   const { skills, loading, upload, deleteSkill } = useSkills(user.userId);
   const fileInputRef = useRef(null);
+  const prevTaskStatusRef = useRef({});
 
   // ── Main tab state ─────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('persona');
@@ -120,6 +122,17 @@ export function NeuralConfig({ onGoToChat }) {
   const [tasks, setTasks] = useState([]);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [tasksFilter, setTasksFilter] = useState('all');
+  const [tasksPage, setTasksPage] = useState(1);
+  const TASKS_PER_PAGE = 10;
+
+  // ── Toast notifications ─────────────────────────────────────────────────
+  const [toasts, setToasts] = useState([]);
+
+  const addToast = (message, type = 'info') => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4500);
+  };
 
   // ── Lazy-load data on tab visit ────────────────────────────────────────────
   useEffect(() => {
@@ -191,6 +204,27 @@ export function NeuralConfig({ onGoToChat }) {
       eventSource.close();
     };
   }, [activeTab, user.userId]);
+
+  // Fire toast when a task transitions to completed or failed
+  useEffect(() => {
+    tasks.forEach((task) => {
+      const prev = prevTaskStatusRef.current[task.task_id];
+      if (prev && prev !== task.status && (task.status === 'completed' || task.status === 'failed')) {
+        const name = task.task_type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+        if (task.status === 'completed') {
+          addToast(`${name} completed`, 'completed');
+        } else {
+          addToast(`${name} failed: ${task.error || 'Unknown error'}`, 'failed');
+        }
+      }
+      prevTaskStatusRef.current[task.task_id] = task.status;
+    });
+  }, [tasks]);
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setTasksPage(1);
+  }, [tasksFilter]);
 
   useEffect(() => {
     if (activeTab === 'persona' && personaSubTab === 'knowledge' && sections === null && !knowledgeLoading) {
@@ -376,10 +410,33 @@ export function NeuralConfig({ onGoToChat }) {
     }
   };
 
+  const handleRetryTask = async (taskId) => {
+    try {
+      const updated = await retryTask(taskId, user.userId);
+      setTasks(tasks.map((t) => t.task_id === taskId ? updated : t));
+    } catch (err) {
+      alert(`Failed to retry: ${err.message}`);
+    }
+  };
+
+  const handleExportTasks = () => {
+    const blob = new Blob([JSON.stringify(tasks, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bianca-tasks-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const filteredTasks = tasks.filter((t) => {
     if (tasksFilter === 'all') return true;
     return t.status === tasksFilter;
   });
+
+  const totalTaskPages = Math.ceil(filteredTasks.length / TASKS_PER_PAGE);
+  const paginatedTasks = filteredTasks.slice((tasksPage - 1) * TASKS_PER_PAGE, tasksPage * TASKS_PER_PAGE);
+  const activeTasksCount = tasks.filter((t) => t.status === 'pending' || t.status === 'running').length;
 
   const getTaskIcon = (type) => {
     switch (type) {
@@ -476,6 +533,9 @@ export function NeuralConfig({ onGoToChat }) {
           <button key={t.id} className={`nc-tab${activeTab === t.id ? ' active' : ''}`} onClick={() => setActiveTab(t.id)}>
             <span className="nc-tab-icon">{t.icon}</span>
             {t.label}
+            {t.id === 'tasks' && activeTasksCount > 0 && (
+              <span className="nc-tab-badge">{activeTasksCount}</span>
+            )}
           </button>
         ))}
       </div>
@@ -1167,7 +1227,12 @@ export function NeuralConfig({ onGoToChat }) {
       {/* ════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'tasks' && (
         <section className="nc-section">
-          <h2 className="nc-section-title">Background Tasks</h2>
+          <div className="nc-section-header">
+            <h2 className="nc-section-title">Background Tasks</h2>
+            {tasks.length > 0 && (
+              <button className="nc-export-btn" onClick={handleExportTasks}>Export JSON</button>
+            )}
+          </div>
           <p className="nc-section-desc">Monitor long-running operations like document creation, emails, and presentations.</p>
 
           <div className="nc-tasks-filters">
@@ -1187,7 +1252,7 @@ export function NeuralConfig({ onGoToChat }) {
             </div>
           ) : (
             <div className="nc-tasks-list">
-              {filteredTasks.map((task) => (
+              {paginatedTasks.map((task) => (
                 <div key={task.task_id} className={`nc-task-card nc-task-${task.status}`}>
                   <div className="nc-task-card-header">
                     <span className="nc-task-icon">{getTaskIcon(task.task_type)}</span>
@@ -1229,12 +1294,31 @@ export function NeuralConfig({ onGoToChat }) {
                     {task.status === 'pending' && (
                       <button className="nc-task-cancel-btn" onClick={() => handleCancelTask(task.task_id)}>Cancel</button>
                     )}
+                    {task.status === 'failed' && (
+                      <button className="nc-task-retry-btn" onClick={() => handleRetryTask(task.task_id)}>Retry</button>
+                    )}
                     {(task.status === 'completed' || task.status === 'failed') && (
                       <button className="nc-task-delete-btn" onClick={() => handleDeleteTask(task.task_id)}>Remove</button>
                     )}
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {totalTaskPages > 1 && (
+            <div className="nc-tasks-pagination">
+              <button
+                className="nc-tasks-page-btn"
+                onClick={() => setTasksPage((p) => Math.max(1, p - 1))}
+                disabled={tasksPage === 1}
+              >Prev</button>
+              <span className="nc-tasks-page-info">{tasksPage} / {totalTaskPages}</span>
+              <button
+                className="nc-tasks-page-btn"
+                onClick={() => setTasksPage((p) => Math.min(totalTaskPages, p + 1))}
+                disabled={tasksPage === totalTaskPages}
+              >Next</button>
             </div>
           )}
         </section>
@@ -1261,6 +1345,19 @@ export function NeuralConfig({ onGoToChat }) {
             API keys are managed through environment variables on the server. Contact your administrator to update these settings.
           </div>
         </section>
+      )}
+      {/* Toast notifications */}
+      {toasts.length > 0 && (
+        <div className="nc-toast-container">
+          {toasts.map((toast) => (
+            <div key={toast.id} className={`nc-toast nc-toast-${toast.type}`}>
+              <span className="nc-toast-icon">
+                {toast.type === 'completed' ? '✓' : toast.type === 'failed' ? '✕' : 'ℹ'}
+              </span>
+              {toast.message}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

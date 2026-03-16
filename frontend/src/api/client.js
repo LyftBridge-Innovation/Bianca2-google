@@ -248,4 +248,13 @@ export async function deleteTaskAPI(taskId, userId) {
   });
 }
 
+/**
+ * Retry a failed task.
+ */
+export async function retryTask(taskId, userId) {
+  return apiRequest(`/tasks/${taskId}/retry?user_id=${userId}`, {
+    method: 'POST',
+  });
+}
+
 export { API_BASE_URL };

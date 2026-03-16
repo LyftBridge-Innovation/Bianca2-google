@@ -4,6 +4,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Gemini API key (shared with voice pipeline)
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
+
 # Google Workspace CLI (gws) configuration
 # The gws CLI is used for all Gmail/Calendar API calls.
 # Per-user OAuth tokens are minted from refresh tokens stored in Firestore.

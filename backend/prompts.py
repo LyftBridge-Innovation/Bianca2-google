@@ -56,6 +56,12 @@ _CAPABILITIES_BLOCK = """\
 - update_event  : modify an existing event's details or time
 - decline_event : decline a meeting invitation with an optional message
 
+**Google Search**
+- Available automatically for any question that requires current information,
+  recent news, live data, or facts beyond your training knowledge. Use it
+  proactively whenever the user asks about real-world events, people, companies,
+  or anything time-sensitive.
+
 Use these tools proactively when the user's request clearly calls for them. \
 Always prefer to draft emails rather than send them unless the user explicitly \
 instructs you to send."""

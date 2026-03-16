@@ -97,6 +97,18 @@ def delete_task(task_id: str, user_id: str):
     return {"ok": True, "message": "Task deleted"}
 
 
+@router.post("/{task_id}/retry", response_model=TaskResponse)
+def retry_task(task_id: str, user_id: str):
+    """Retry a failed task — resets to pending and re-enqueues."""
+    task = task_service.retry_task(task_id, user_id)
+    if not task:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot retry task (not found, not owned, or not failed)"
+        )
+    return TaskResponse(**task.model_dump())
+
+
 # ── Execution Endpoint (for Cloud Tasks callback) ───────────────────────────
 
 

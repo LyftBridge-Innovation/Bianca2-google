@@ -4,7 +4,6 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, AsyncGenerator
 import json
-import asyncio
 from langchain_google_vertexai import ChatVertexAI
 from config import GCP_PROJECT_ID, GCP_LOCATION, TEST_USER_ID
 from request_context import current_user_id
@@ -16,6 +15,17 @@ from summarization import summarize_session_sync
 from memory_retrieval import retrieve_memories_for_message, format_memory_injection
 from skill_matcher import match_skills, build_skills_block
 from settings_loader import load_settings
+from task_service import task_service
+
+# ── Background task queue integration ─────────────────────────────────────────
+# Tool names that should be routed through the background task queue instead
+# of being executed synchronously in the chat loop.
+BACKGROUND_TOOL_MAP = {
+    "create_google_doc": "create_doc",
+    "create_google_sheet": "create_sheet",
+    "send_email_message": "send_email",
+    "draft_email_message": "draft_email",
+}
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -23,6 +33,33 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 # call.  The full history is always persisted in Firestore; this only controls
 # how many turns are sent as context to Gemini per request.
 MAX_HISTORY_MESSAGES = 20
+
+
+def _try_enqueue_background(tool_name: str, tool_args: dict, user_id: str, session_id: str):
+    """If tool_name is a long-running operation, enqueue it as a background task.
+
+    Returns (True, result_str) if enqueued, or (False, None) if tool should
+    run synchronously in the normal chat loop.
+    """
+    task_type = BACKGROUND_TOOL_MAP.get(tool_name)
+    if not task_type:
+        return False, None
+
+    task = task_service.create_task(
+        user_id=user_id,
+        task_type=task_type,
+        parameters=tool_args,
+        session_id=session_id,
+    )
+    task_service.enqueue(task.task_id)
+
+    friendly = task_type.replace("_", " ")
+    result_str = (
+        f"Background task created (ID: {task.task_id}). "
+        f"I've queued a '{friendly}' operation that will run in the background. "
+        f"The user can track its progress in the Tasks tab of Neural Config."
+    )
+    return True, result_str
 
 # LLM cache — recreated when model/temperature settings change
 _llm_cache = {"model": None, "temperature": None, "instance": None}
@@ -176,42 +213,72 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
             for tool_call in response.tool_calls:
                 tool_name = tool_call["name"]
                 tool_args = tool_call["args"]
-                
-                # Find and execute the tool
-                tool_result = None
-                for tool in ALL_TOOLS:
-                    if tool.name == tool_name:
-                        try:
-                            tool_result = tool.invoke(tool_args)
-                            result_str = str(tool_result)
-                            
-                            # Log tool call to session
-                            tc = ToolCall(
-                                tool_name=tool_name,
-                                parameters=tool_args,
-                                result=result_str
-                            )
-                            session_tool_calls.append(tc)
-                            fs.append_tool_call(session.session_id, tc)
-                            
-                            # Generate human readable description
-                            human_readable = generate_human_readable(tool_name, tool_args, result_str)
-                            
-                            # Log to global tool_action_log
-                            action_log = ToolActionLog(
-                                user_id=request.user_id,
-                                session_id=session.session_id,
-                                tool_name=tool_name,
-                                human_readable=human_readable,
-                                parameters=tool_args,
-                                result=result_str,
-                                modality="chat"
-                            )
-                            fs.log_tool_action(action_log)
-                            
-                        except Exception as e:
-                            tool_result = f"Error executing {tool_name}: {str(e)}"
-                        break
+
+                # Check if this should be a background task
+                enqueued, bg_result = _try_enqueue_background(
+                    tool_name, tool_args, request.user_id, session.session_id
+                )
+
+                if enqueued:
+                    tool_result = bg_result
+                    result_str = bg_result
+
+                    # Log the background enqueue as a tool call
+                    tc = ToolCall(
+                        tool_name=tool_name,
+                        parameters=tool_args,
+                        result=result_str
+                    )
+                    session_tool_calls.append(tc)
+                    fs.append_tool_call(session.session_id, tc)
+
+                    human_readable = f"Queued background task: {tool_name.replace('_', ' ')}"
+                    action_log = ToolActionLog(
+                        user_id=request.user_id,
+                        session_id=session.session_id,
+                        tool_name=tool_name,
+                        human_readable=human_readable,
+                        parameters=tool_args,
+                        result=result_str,
+                        modality="chat"
+                    )
+                    fs.log_tool_action(action_log)
+                else:
+                    # Find and execute the tool synchronously
+                    tool_result = None
+                    for tool in ALL_TOOLS:
+                        if tool.name == tool_name:
+                            try:
+                                tool_result = tool.invoke(tool_args)
+                                result_str = str(tool_result)
+
+                                # Log tool call to session
+                                tc = ToolCall(
+                                    tool_name=tool_name,
+                                    parameters=tool_args,
+                                    result=result_str
+                                )
+                                session_tool_calls.append(tc)
+                                fs.append_tool_call(session.session_id, tc)
+
+                                # Generate human readable description
+                                human_readable = generate_human_readable(tool_name, tool_args, result_str)
+
+                                # Log to global tool_action_log
+                                action_log = ToolActionLog(
+                                    user_id=request.user_id,
+                                    session_id=session.session_id,
+                                    tool_name=tool_name,
+                                    human_readable=human_readable,
+                                    parameters=tool_args,
+                                    result=result_str,
+                                    modality="chat"
+                                )
+                                fs.log_tool_action(action_log)
+
+                            except Exception as e:
+                                tool_result = f"Error executing {tool_name}: {str(e)}"
+                            break
                 
                 # Add tool result to messages
                 messages.append(ToolMessage(
@@ -356,40 +423,72 @@ async def stream_chat_response(request: ChatRequest, background_tasks: Backgroun
             for tool_call in response.tool_calls:
                 tool_name = tool_call["name"]
                 tool_args = tool_call["args"]
-                
-                # Emit tool_call event
-                yield format_sse_event("tool_call", {"tool": tool_name, "status": "running"})
-                
-                tool_result = None
-                for tool in ALL_TOOLS:
-                    if tool.name == tool_name:
-                        try:
-                            tool_result = tool.invoke(tool_args)
-                            result_str = str(tool_result)
-                            
-                            tc = ToolCall(
-                                tool_name=tool_name,
-                                parameters=tool_args,
-                                result=result_str
-                            )
-                            session_tool_calls.append(tc)
-                            fs.append_tool_call(session.session_id, tc)
-                            
-                            human_readable = generate_human_readable(tool_name, tool_args, result_str)
-                            action_log = ToolActionLog(
-                                user_id=request.user_id,
-                                session_id=session.session_id,
-                                tool_name=tool_name,
-                                human_readable=human_readable,
-                                parameters=tool_args,
-                                result=result_str,
-                                modality="chat"
-                            )
-                            fs.log_tool_action(action_log)
-                            
-                        except Exception as e:
-                            tool_result = f"Error executing {tool_name}: {str(e)}"
-                        break
+
+                # Check if this should be a background task
+                enqueued, bg_result = _try_enqueue_background(
+                    tool_name, tool_args, request.user_id, session.session_id
+                )
+
+                if enqueued:
+                    # Emit tool_call event showing it was queued
+                    yield format_sse_event("tool_call", {"tool": tool_name, "status": "queued"})
+
+                    tool_result = bg_result
+                    result_str = bg_result
+
+                    tc = ToolCall(
+                        tool_name=tool_name,
+                        parameters=tool_args,
+                        result=result_str
+                    )
+                    session_tool_calls.append(tc)
+                    fs.append_tool_call(session.session_id, tc)
+
+                    human_readable = f"Queued background task: {tool_name.replace('_', ' ')}"
+                    action_log = ToolActionLog(
+                        user_id=request.user_id,
+                        session_id=session.session_id,
+                        tool_name=tool_name,
+                        human_readable=human_readable,
+                        parameters=tool_args,
+                        result=result_str,
+                        modality="chat"
+                    )
+                    fs.log_tool_action(action_log)
+                else:
+                    # Emit tool_call event
+                    yield format_sse_event("tool_call", {"tool": tool_name, "status": "running"})
+
+                    tool_result = None
+                    for tool in ALL_TOOLS:
+                        if tool.name == tool_name:
+                            try:
+                                tool_result = tool.invoke(tool_args)
+                                result_str = str(tool_result)
+
+                                tc = ToolCall(
+                                    tool_name=tool_name,
+                                    parameters=tool_args,
+                                    result=result_str
+                                )
+                                session_tool_calls.append(tc)
+                                fs.append_tool_call(session.session_id, tc)
+
+                                human_readable = generate_human_readable(tool_name, tool_args, result_str)
+                                action_log = ToolActionLog(
+                                    user_id=request.user_id,
+                                    session_id=session.session_id,
+                                    tool_name=tool_name,
+                                    human_readable=human_readable,
+                                    parameters=tool_args,
+                                    result=result_str,
+                                    modality="chat"
+                                )
+                                fs.log_tool_action(action_log)
+
+                            except Exception as e:
+                                tool_result = f"Error executing {tool_name}: {str(e)}"
+                            break
                 
                 messages.append(ToolMessage(
                     content=str(tool_result),

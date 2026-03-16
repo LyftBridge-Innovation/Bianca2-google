@@ -2169,7 +2169,8 @@
 }
 
 .nc-task-cancel-btn,
-.nc-task-delete-btn {
+.nc-task-delete-btn,
+.nc-task-retry-btn {
   padding: 4px 12px;
   background: transparent;
   border: 1px solid var(--border-muted);
@@ -2188,6 +2189,16 @@
   color: #fbbf24;
 }
 
+.nc-task-retry-btn {
+  color: var(--accent-violet);
+}
+
+.nc-task-retry-btn:hover {
+  border-color: var(--accent-violet);
+  color: var(--accent-violet);
+  background: rgba(124, 106, 247, 0.08);
+}
+
 .nc-task-delete-btn {
   color: var(--text-muted);
 }
@@ -2195,4 +2206,136 @@
 .nc-task-delete-btn:hover {
   border-color: var(--color-danger);
   color: var(--color-danger);
+}
+
+/* ── Tab badge ──────────────────────────────────────────────────────────────── */
+
+.nc-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: var(--accent-violet);
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+  margin-left: 2px;
+}
+
+/* ── Export button ──────────────────────────────────────────────────────────── */
+
+.nc-export-btn {
+  padding: 5px 14px;
+  background: transparent;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color var(--transition-base), color var(--transition-base);
+  white-space: nowrap;
+}
+
+.nc-export-btn:hover {
+  border-color: rgba(41, 108, 172, 0.45);
+  color: var(--accent);
+}
+
+/* ── Pagination ─────────────────────────────────────────────────────────────── */
+
+.nc-tasks-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.nc-tasks-page-btn {
+  padding: 5px 14px;
+  background: transparent;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color var(--transition-base), color var(--transition-base);
+}
+
+.nc-tasks-page-btn:hover:not(:disabled) {
+  border-color: rgba(41, 108, 172, 0.45);
+  color: var(--accent);
+}
+
+.nc-tasks-page-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.nc-tasks-page-info {
+  font-size: 12px;
+  color: var(--text-muted);
+  min-width: 48px;
+  text-align: center;
+}
+
+/* ── Toast notifications ────────────────────────────────────────────────────── */
+
+.nc-toast-container {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.nc-toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  background: var(--bg-glass);
+  backdrop-filter: var(--glass-backdrop);
+  -webkit-backdrop-filter: var(--glass-backdrop);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  font-size: 13px;
+  color: var(--text-primary);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+  animation: nc-toast-in 0.25s ease;
+  max-width: 320px;
+}
+
+.nc-toast-icon {
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.nc-toast-completed {
+  border-color: rgba(16, 185, 129, 0.30);
+}
+
+.nc-toast-completed .nc-toast-icon {
+  color: #10b981;
+}
+
+.nc-toast-failed {
+  border-color: rgba(239, 68, 68, 0.30);
+}
+
+.nc-toast-failed .nc-toast-icon {
+  color: #ef4444;
+}
+
+@keyframes nc-toast-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }

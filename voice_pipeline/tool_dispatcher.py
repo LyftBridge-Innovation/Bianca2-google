@@ -17,6 +17,24 @@ if _backend_path not in sys.path:
 from voice_config import DEBUG_LOGGING  # noqa: E402
 
 
+# ── Background task tools (mirrors BACKGROUND_TOOL_MAP in backend/routers/chat.py) ──
+# These tool calls are offloaded to the task queue instead of running inline,
+# so the voice response is immediate and the user can track progress in Neural Config.
+BACKGROUND_TOOL_MAP = {
+    "create_google_doc": "create_doc",
+    "create_google_sheet": "create_sheet",
+    "send_email_message": "send_email",
+    "draft_email_message": "draft_email",
+}
+
+BACKGROUND_FILLER: dict[str, str] = {
+    "create_doc": "I've queued that document for you — it'll be ready shortly. Check the Tasks tab in Neural Config to track progress.",
+    "create_sheet": "I've queued that spreadsheet for you. You can track it in the Tasks tab of Neural Config.",
+    "send_email": "I've queued that email for you. It'll be sent in a moment — you can track it in the Tasks tab.",
+    "draft_email": "I've saved that as a draft in your queue. Check the Tasks tab in Neural Config when you're ready.",
+}
+
+
 # ── Filler phrases ────────────────────────────────────────────────────────────
 
 FILLER_PHRASES: dict[str, str] = {
@@ -89,7 +107,7 @@ class ToolDispatcher:
                 print(f"Warning: Could not load YAML tool handlers: {e}")
 
     def is_known_tool(self, function_name: str) -> bool:
-        return function_name in self._map
+        return function_name in self._map or function_name in BACKGROUND_TOOL_MAP
 
     def get_filler_phrase(self, function_name: str) -> str:
         if function_name in FILLER_PHRASES:
@@ -103,8 +121,38 @@ class ToolDispatcher:
     async def dispatch(self, function_name: str, parameters: dict) -> str:
         """
         Route a Gemini tool call to the correct backend function.
+        Long-running operations are offloaded to the background task queue.
         Returns a clean formatted string result.
         """
+        # ── Background task routing ───────────────────────────────────────────
+        task_type = BACKGROUND_TOOL_MAP.get(function_name)
+        if task_type:
+            try:
+                from task_service import task_service
+                task = task_service.create_task(
+                    user_id=self.user_id,
+                    task_type=task_type,
+                    parameters=parameters,
+                )
+                task_service.enqueue(task.task_id)
+                result = BACKGROUND_FILLER.get(task_type, f"I've queued that for you (task {task.task_id}).")
+            except Exception as e:
+                if DEBUG_LOGGING:
+                    print(f"Failed to enqueue background task {function_name}: {e}")
+                result = f"Sorry, I couldn't queue that operation right now: {e}"
+
+            if self.on_tool_call_complete:
+                try:
+                    await self.on_tool_call_complete(
+                        tool_name=function_name,
+                        parameters=parameters,
+                        result=result,
+                    )
+                except Exception:
+                    pass
+            return result
+
+        # ── Synchronous execution ─────────────────────────────────────────────
         handler = self._map.get(function_name)
         if not handler:
             raise ValueError(f"Unknown tool function: {function_name!r}")

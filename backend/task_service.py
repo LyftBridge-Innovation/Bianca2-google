@@ -217,6 +217,30 @@ class TaskService:
 
         return self.fs.delete_task(task_id)
 
+    def retry_task(self, task_id: str, user_id: str) -> Optional[Task]:
+        """Retry a failed task. Resets it to pending and re-enqueues."""
+        task = self.fs.get_task(task_id)
+        if not task:
+            return None
+        if task.user_id != user_id:
+            return None
+        if task.status != "failed":
+            return None
+
+        self.fs.update_task(
+            task_id,
+            status="pending",
+            progress=0,
+            progress_message="Queued (retry)",
+            error=None,
+            started_at=None,
+            completed_at=None,
+            result=None,
+        )
+        self.enqueue(task_id)
+        logger.info(f"Retried task {task_id}")
+        return self.fs.get_task(task_id)
+
 
 # Singleton instance
 task_service = TaskService()
@@ -257,4 +281,16 @@ def execute_draft_email(user_id: str, params: Dict[str, Any]) -> Dict[str, Any]:
     subject = params["subject"]
     body = params["body"]
     result = draft_email(user_id, to, subject, body)
+    return result
+
+
+@register_executor("create_sheet")
+def execute_create_sheet(user_id: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    """Create a Google Sheet."""
+    from tools.sheets_writer import create_google_sheet
+
+    title = params.get("title", "Untitled Spreadsheet")
+    headers = params.get("headers", [])
+    rows = params.get("rows", None)
+    result = create_google_sheet(user_id, title, headers, rows)
     return result
