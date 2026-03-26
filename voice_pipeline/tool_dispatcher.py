@@ -21,11 +21,12 @@ from voice_config import DEBUG_LOGGING  # noqa: E402
 # These tool calls are offloaded to the task queue instead of running inline,
 # so the voice response is immediate and the user can track progress in Neural Config.
 BACKGROUND_TOOL_MAP = {
-    # Document creation — all route to the unified create_document executor
-    "create_docx_document": "create_document",
-    "create_xlsx_spreadsheet": "create_document",
-    "create_pptx_presentation": "create_document",
-    "create_pdf_document": "create_document",
+    # Document creation — voice sends description, so we use generate_and_create_document
+    # which calls Claude internally to produce the actual code.
+    "create_docx_document": "generate_and_create_document",
+    "create_xlsx_spreadsheet": "generate_and_create_document",
+    "create_pptx_presentation": "generate_and_create_document",
+    "create_pdf_document": "generate_and_create_document",
     # Email tools
     "send_email_message": "send_email",
     "draft_email_message": "draft_email",
@@ -40,6 +41,7 @@ _DOCUMENT_TOOL_TYPES: dict[str, str] = {
 }
 
 BACKGROUND_FILLER: dict[str, str] = {
+    "generate_and_create_document": "I've queued that for you — it'll be generated and uploaded to Google Drive shortly. Check the Tasks tab in Neural Config to track progress.",
     "create_document": "I've queued that document for you — it'll be ready shortly. Check the Tasks tab in Neural Config to track progress.",
     "send_email": "I've queued that email for you. It'll be sent in a moment — you can track it in the Tasks tab.",
     "draft_email": "I've saved that as a draft in your queue. Check the Tasks tab in Neural Config when you're ready.",
@@ -140,10 +142,13 @@ class ToolDispatcher:
         if task_type:
             try:
                 from task_service import task_service
-                # For document creation tasks, include document_type in params
                 params = dict(parameters)
                 if doc_type := _DOCUMENT_TOOL_TYPES.get(function_name):
                     params["document_type"] = doc_type
+                    # Voice sends a natural-language 'description' instead of code.
+                    # generate_and_create_document expects 'user_message'.
+                    if "description" in params and "user_message" not in params:
+                        params["user_message"] = params.pop("description")
                 task = task_service.create_task(
                     user_id=self.user_id,
                     task_type=task_type,

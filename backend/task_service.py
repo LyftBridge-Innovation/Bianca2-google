@@ -268,6 +268,100 @@ def execute_create_document(user_id: str, params: Dict[str, Any]) -> Dict[str, A
     return execute_and_upload(user_id, document_type, title, code)
 
 
+@register_executor("generate_and_create_document")
+def execute_generate_and_create_document(user_id: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Full pipeline: call LLM to generate document code from the user's request,
+    then execute and upload to Google Drive.
+
+    Expected params:
+        user_message  : original user request text
+        document_type : "docx" | "xlsx" | "pptx" | "pdf"
+        title         : pre-extracted title hint
+        model         : LLM model to use for code generation
+        anthropic_api_key : optional Anthropic key override
+    """
+    import re
+    from document_skill_loader import _load_instructions
+    from tools.document_engine import execute_and_upload
+    from settings_loader import load_settings
+
+    user_message = params.get("user_message", "")
+    document_type = params.get("document_type", "docx")
+    title = params.get("title", "Document")
+
+    settings = load_settings()
+    model = params.get("model") or settings.get("model", "claude-sonnet-4-5-20250929")
+    api_key = (
+        params.get("anthropic_api_key", "").strip()
+        or settings.get("anthropic_api_key", "").strip()
+        or os.getenv("ANTHROPIC_API_KEY", "")
+    )
+
+    instructions = _load_instructions(document_type)
+    format_names = {
+        "docx": "Word document (.docx)",
+        "xlsx": "Excel spreadsheet (.xlsx)",
+        "pptx": "PowerPoint presentation (.pptx)",
+        "pdf": "PDF document (.pdf)",
+    }
+    code_libs = {
+        "docx": "docx-js (Node.js — require('docx'))",
+        "xlsx": "openpyxl (Python)",
+        "pptx": "pptxgenjs (Node.js — require('pptxgenjs'))",
+        "pdf": "reportlab (Python)",
+    }
+
+    prompt = f"""You are a code generator. The user wants to create a {format_names[document_type]}.
+
+User request:
+{user_message}
+
+--- GENERATION INSTRUCTIONS ---
+{instructions}
+
+Generate COMPLETE, runnable {code_libs[document_type]} code that fulfils the user's request.
+Rules:
+- Return ONLY the raw code, no markdown fences, no explanation
+- First line must be: # TITLE: <a good filename for this document>
+- The code must write the output file to the current working directory
+- Follow all critical rules from the instructions above exactly"""
+
+    # Call the LLM (Anthropic or Vertex AI)
+    if model.startswith("claude"):
+        import anthropic
+        if not api_key:
+            raise ValueError("Anthropic API key is required. Set ANTHROPIC_API_KEY in backend/.env")
+        client = anthropic.Anthropic(api_key=api_key)
+        response = client.messages.create(
+            model=model,
+            max_tokens=8096,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = response.content[0].text
+    else:
+        from langchain_google_vertexai import ChatVertexAI
+        from config import GCP_PROJECT_ID, GCP_LOCATION
+        llm = ChatVertexAI(model=model, project=GCP_PROJECT_ID, location=GCP_LOCATION, temperature=0.3)
+        raw = llm.invoke(prompt).content
+
+    # Strip markdown fences if the model added them despite instructions
+    code = re.sub(r'^```[\w]*\n?', '', raw, flags=re.MULTILINE)
+    code = re.sub(r'^```\n?', '', code, flags=re.MULTILINE)
+    code = code.strip()
+
+    # Extract TITLE comment if present
+    lines = code.splitlines()
+    if lines and lines[0].startswith("# TITLE:"):
+        extracted = lines[0].replace("# TITLE:", "").strip()
+        if extracted:
+            title = extracted
+        code = "\n".join(lines[1:]).strip()
+
+    logger.info("Generated %s code (%d chars) for '%s'", document_type, len(code), title)
+    return execute_and_upload(user_id, document_type, title, code)
+
+
 @register_executor("send_email")
 def execute_send_email(user_id: str, params: Dict[str, Any]) -> Dict[str, Any]:
     """Send an email."""

@@ -140,28 +140,36 @@ def _npm_install(packages: list[str], work_dir: str) -> None:
     logger.info("npm install %s → OK", packages)
 
 
-def _ensure_async_js(code: str, document_type: str) -> str:
+def _wrap_in_async_runner(user_code: str, output_file: str) -> str:
     """
-    Wrap JS in an async IIFE when the document type requires it.
+    Produce a reliable pptxgenjs runner script.
 
-    pptxgenjs writeFile() returns a Promise. If not awaited, Node exits before
-    the file is flushed to disk. We wrap the whole script so top-level await works.
+    Strategy: write the user's code into a self-contained async function,
+    ensure writeFile is awaited, and use a top-level .then/.catch so Node
+    stays alive until the file is fully flushed to disk regardless of whether
+    the LLM used await or .then().
     """
-    if document_type != "pptx":
-        return code
-
-    # If the LLM already used await at the top level, just add an IIFE wrapper
-    # If not, add await before the writeFile call first
-    if "await pres.writeFile" not in code and "pres.writeFile" in code:
-        code = code.replace("pres.writeFile(", "await pres.writeFile(")
-
-    # Wrap in async IIFE so top-level await is valid in CommonJS
-    wrapped = (
-        "(async () => {\n"
-        + code
-        + "\n})().catch(err => { console.error(err && err.message ? err.message : String(err)); process.exit(1); });"
+    # Normalise the writeFile call to the correct output filename
+    # (already done by _patch_js_output_path, but be defensive)
+    user_code = re.sub(
+        r'(?:await\s+)?pres\.writeFile\s*\([^)]*\)',
+        f'await pres.writeFile({{ fileName: "{output_file}" }})',
+        user_code,
     )
-    return wrapped
+    # Remove any standalone .then()/.catch() chains left after the above
+    user_code = re.sub(r'\s*\.then\s*\([^)]*\)', '', user_code)
+    user_code = re.sub(r'\s*\.catch\s*\([^)]*\)', '', user_code)
+
+    return f"""\
+(async function run() {{
+{user_code}
+}})()
+.then(() => process.exit(0))
+.catch(err => {{
+  console.error('pptx generation failed:', err && err.message ? err.message : String(err));
+  process.exit(1);
+}});
+"""
 
 
 def _run_node(code: str, output_file: str, work_dir: str, document_type: str) -> None:
@@ -172,7 +180,11 @@ def _run_node(code: str, output_file: str, work_dir: str, document_type: str) ->
 
     script_path = os.path.join(work_dir, "generate.js")
     patched = _patch_js_output_path(code, output_file)
-    patched = _ensure_async_js(patched, document_type)
+
+    # pptxgenjs writeFile is async — wrap in a reliable async runner
+    if document_type == "pptx":
+        patched = _wrap_in_async_runner(patched, output_file)
+
     with open(script_path, "w", encoding="utf-8") as f:
         f.write(patched)
 

@@ -49,9 +49,17 @@ Core principles you follow at all times:
 
 # Capabilities — concise, for reference
 _CAPABILITIES = """\
-You have access to Gmail and Google Calendar. You can read, draft, and send emails. \
-You can view, create, update, and decline calendar events. \
-You also have access to Google Search for real-time information.\
+You have access to the following tools — use them whenever relevant:
+- Gmail: read, draft, send, and search emails
+- Google Calendar: view, create, update, and decline events
+- Google Drive: list and search files
+- Google Tasks: view and create tasks
+- Contacts / People: look up contact information
+- Document creation: create Word documents, Excel spreadsheets, PowerPoint presentations, and PDFs — \
+  these are generated and uploaded to Google Drive automatically, and you will receive a shareable link to share with the user
+- Google Search: look up real-time information on any topic
+
+When asked to create a document, presentation, spreadsheet, or PDF, call the appropriate tool immediately with a title and a clear description of what it should contain.\
 """
 
 # Assembled at import time — date is baked in since voice sessions are short-lived

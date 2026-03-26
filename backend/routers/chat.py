@@ -16,7 +16,7 @@ from memory_retrieval import retrieve_memories_for_message, format_memory_inject
 from skill_matcher import match_skills, build_skills_block
 from settings_loader import load_settings
 from task_service import task_service
-from document_skill_loader import get_document_skill_block
+from document_skill_loader import get_document_skill_block, detect_document_type, extract_doc_title
 import logging as _logging
 _chat_logger = _logging.getLogger(__name__)
 
@@ -450,9 +450,52 @@ async def stream_chat_response(request: ChatRequest, background_tasks: Backgroun
         yield format_sse_event("session", {"session_id": session.session_id})
         
         # Persist user message
-        user_message = Message(role="user", content=request.message)
-        fs.append_message(session.session_id, user_message)
-        
+        user_message_obj = Message(role="user", content=request.message)
+        fs.append_message(session.session_id, user_message_obj)
+
+        # ── Early document-creation intercept ─────────────────────────────────
+        # Detect document intent before any LLM call and queue immediately so
+        # the user gets an instant response while generation runs in background.
+        doc_type = detect_document_type(request.message)
+        if doc_type:
+            import os
+            _settings = load_settings()
+            title = extract_doc_title(request.message, doc_type)
+            doc_task = task_service.create_task(
+                user_id=request.user_id,
+                task_type="generate_and_create_document",
+                parameters={
+                    "user_message": request.message,
+                    "document_type": doc_type,
+                    "title": title,
+                    "model": _settings.get("model", "claude-sonnet-4-5-20250929"),
+                    "anthropic_api_key": (
+                        _settings.get("anthropic_api_key", "").strip()
+                        or os.environ.get("ANTHROPIC_API_KEY", "")
+                    ),
+                },
+                session_id=session.session_id,
+            )
+            task_service.enqueue(doc_task.task_id)
+
+            type_labels = {
+                "docx": "Word document", "xlsx": "Excel spreadsheet",
+                "pptx": "PowerPoint presentation", "pdf": "PDF document",
+            }
+            instant_reply = (
+                f"On it! I'm generating your **{type_labels[doc_type]}** — \"{title}\" — in the background. "
+                f"This usually takes about 60–90 seconds (code generation + execution + Drive upload). "
+                f"Check the **Tasks** tab for a live progress update and the Google Drive link once it's ready. "
+                f"Task ID: `{doc_task.task_id}`"
+            )
+            assistant_msg = Message(role="assistant", content=instant_reply)
+            fs.append_message(session.session_id, assistant_msg)
+            yield format_sse_event("tool_call", {"tool": f"create_{doc_type}", "status": "queued"})
+            yield format_sse_event("token", {"token": instant_reply})
+            yield format_sse_event("done", {"session_id": session.session_id})
+            return
+        # ─────────────────────────────────────────────────────────────────────
+
         # Build message chain
         messages = [SystemMessage(content=get_system_prompt())]
         

@@ -66,6 +66,43 @@ def detect_document_type(user_message: str) -> str | None:
     return None
 
 
+def extract_doc_title(user_message: str, document_type: str) -> str:
+    """
+    Best-effort extraction of a document title from the user's message.
+    Falls back to a sensible default based on document_type.
+    """
+    import re
+    msg = user_message.strip()
+
+    # Look for quoted titles first: "make me a 'Q3 Report'" or "titled X"
+    for pattern in [
+        r'(?:called|named|titled?|for)\s+["\u201c\u2018]([^"\u201d\u2019]{3,60})["\u201d\u2019]',
+        r'["\u201c\u2018]([^"\u201d\u2019]{3,60})["\u201d\u2019]',
+    ]:
+        m = re.search(pattern, msg, re.IGNORECASE)
+        if m:
+            return m.group(1).strip()
+
+    # Use first sentence fragment, truncated
+    first_line = re.split(r'[.\n]', msg)[0].strip()
+    if 10 < len(first_line) < 80:
+        # Strip leading verb phrases like "create a", "make me a", "build me a"
+        cleaned = re.sub(
+            r'^(?:create|make|build|write|generate|draft|give me|can you make|i need)\s+(?:me\s+)?(?:a\s+|an\s+)?',
+            '', first_line, flags=re.IGNORECASE,
+        ).strip()
+        if len(cleaned) > 5:
+            return cleaned[:70]
+
+    defaults = {
+        "docx": "Document",
+        "xlsx": "Spreadsheet",
+        "pptx": "Presentation",
+        "pdf": "Report",
+    }
+    return defaults.get(document_type, "Document")
+
+
 def get_document_skill_block(user_message: str) -> str | None:
     """
     Return a formatted instruction block to inject into the system prompt,
