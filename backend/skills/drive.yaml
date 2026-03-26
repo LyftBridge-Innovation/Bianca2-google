@@ -8,6 +8,7 @@ api:
   google_api: drive.googleapis.com
   scopes:
     - https://www.googleapis.com/auth/drive.readonly
+    - https://www.googleapis.com/auth/drive.file
 
 tools:
   - name: list_drive_files

@@ -1,6 +1,80 @@
 .app-layout {
   display: flex;
+  flex-direction: column;
   height: 100vh;
   width: 100vw;
+  overflow: hidden;
+}
+
+.app-layout > .reauth-banner ~ * {
+  /* When banner is shown, the flex row (sidebar + content) fills remaining height */
+  flex: 1;
+  min-height: 0;
+}
+
+/* Re-auth permission banner */
+.reauth-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background: linear-gradient(90deg, rgba(232, 184, 109, 0.18), rgba(232, 184, 109, 0.08));
+  border-bottom: 1px solid rgba(232, 184, 109, 0.35);
+  font-size: 13px;
+  color: var(--color-text-primary, #e8e8e8);
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+.reauth-banner__icon {
+  font-size: 15px;
+  color: #e8b86d;
+  flex-shrink: 0;
+}
+
+.reauth-banner__text {
+  flex: 1;
+  color: rgba(232, 184, 109, 0.9);
+}
+
+.reauth-banner__btn {
+  padding: 5px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(232, 184, 109, 0.5);
+  background: rgba(232, 184, 109, 0.12);
+  color: #e8b86d;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.reauth-banner__btn:hover {
+  background: rgba(232, 184, 109, 0.22);
+  border-color: rgba(232, 184, 109, 0.8);
+}
+
+.reauth-banner__dismiss {
+  background: none;
+  border: none;
+  color: rgba(232, 184, 109, 0.5);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.reauth-banner__dismiss:hover {
+  color: rgba(232, 184, 109, 0.9);
+}
+
+/* Inner row (sidebar + main content) must fill remaining height */
+.app-layout__inner {
+  display: flex;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
 }

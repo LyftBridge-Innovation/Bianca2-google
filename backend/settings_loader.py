@@ -12,7 +12,8 @@ _DEFAULT_SETTINGS: dict[str, Any] = {
     "ai_voice": "shimmer",
     "primary_language": "English",
     "secondary_language": "",
-    "model": "gemini-2.5-flash",
+    # Default to Claude Sonnet — override in Neural Config → System Prompt tab
+    "model": "claude-sonnet-4-5-20250929",
     "temperature": 0.7,
     "custom_prompt": "",
     "slides_template_id": "",
@@ -22,6 +23,8 @@ _DEFAULT_SETTINGS: dict[str, Any] = {
     "voice_greeting": "",
     "email_polling_interval": 15,
     "email_polling_days": "weekdays",
+    # Anthropic key — falls back to ANTHROPIC_API_KEY env var if blank
+    "anthropic_api_key": "",
 }
 
 

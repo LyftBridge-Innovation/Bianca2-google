@@ -18,7 +18,7 @@ class User(BaseModel):
     job_title: str = ""
     company: str = ""
     timezone: str = "UTC"
-    google_refresh_token: str
+    google_refresh_token: str = ""
     assistant_name: str = "Bianca"
     enabled_skills: list[str] = Field(
         default_factory=list,

@@ -31,7 +31,27 @@ const VOICE_OPTIONS = [
   { id: 'onyx', label: 'Onyx', desc: 'Deep male' },
 ];
 
-const MODEL_OPTIONS = ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash'];
+const MODEL_GROUPS = [
+  {
+    provider: 'Anthropic',
+    color: '#c96442',
+    models: [
+      { id: 'claude-sonnet-4-6',          label: 'Claude Sonnet 4.6',  desc: 'Latest — most capable' },
+      { id: 'claude-sonnet-4-5-20250929', label: 'Claude Sonnet 4.5',  desc: 'Default — best balance' },
+      { id: 'claude-opus-4-6',            label: 'Claude Opus 4.6',    desc: 'Most powerful' },
+      { id: 'claude-haiku-4-5-20251001',  label: 'Claude Haiku 4.5',   desc: 'Fast & cheap' },
+    ],
+  },
+  {
+    provider: 'Google Gemini',
+    color: '#4dc8f5',
+    models: [
+      { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', desc: 'Fast & efficient' },
+      { id: 'gemini-2.5-pro',   label: 'Gemini 2.5 Pro',   desc: 'Most capable Gemini' },
+      { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash', desc: 'Stable, multimodal' },
+    ],
+  },
+];
 
 const LANGUAGES = [
   'English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese',
@@ -919,11 +939,42 @@ export function NeuralConfig({ onGoToChat }) {
             <>
               <div className="nc-subsection">
                 <h3 className="nc-subsection-title">Model</h3>
-                <div className="nc-model-options">
-                  {MODEL_OPTIONS.map((m) => (
-                    <button key={m} className={`nc-model-chip${settings.model === m ? ' active' : ''}`} onClick={() => updateSetting('model', m)}>{m}</button>
+                <div className="nc-model-groups">
+                  {MODEL_GROUPS.map((group) => (
+                    <div key={group.provider} className="nc-model-group">
+                      <div className="nc-model-group-label" style={{ color: group.color }}>
+                        {group.provider}
+                      </div>
+                      <div className="nc-model-options">
+                        {group.models.map((m) => (
+                          <button
+                            key={m.id}
+                            className={`nc-model-chip${settings.model === m.id ? ' active' : ''}`}
+                            style={settings.model === m.id ? { borderColor: group.color, color: group.color } : {}}
+                            onClick={() => updateSetting('model', m.id)}
+                          >
+                            <span className="nc-model-chip-name">{m.label}</span>
+                            <span className="nc-model-chip-desc">{m.desc}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
+
+                {settings.model?.startsWith('claude') && (
+                  <div className="nc-model-apikey">
+                    <label className="nc-form-label">Anthropic API Key</label>
+                    <input
+                      className="nc-form-input nc-apikey-input"
+                      type="password"
+                      placeholder="sk-ant-api03-… (or set ANTHROPIC_API_KEY in .env)"
+                      value={settings.anthropic_api_key || ''}
+                      onChange={(e) => updateSetting('anthropic_api_key', e.target.value)}
+                    />
+                    <div className="nc-subsection-hint">Only required if not set in backend/.env</div>
+                  </div>
+                )}
               </div>
 
               <div className="nc-subsection">

@@ -1,0 +1,30 @@
+skill:
+  name: pdf
+  display_name: PDF Documents
+  description: Create PDF documents using reportlab
+  icon: picture_as_pdf
+
+api:
+  google_api: drive.googleapis.com
+  scopes:
+    - https://www.googleapis.com/auth/drive.file
+
+tools:
+  - name: create_pdf_document
+    description: >
+      Create a professional PDF document with custom formatting, tables,
+      and multi-page layouts. Write complete reportlab Python code that
+      generates the file. Use for reports, invoices, letters, or any
+      content best delivered as a fixed-format PDF. Returns a Google Drive link.
+    handler: "tools.document_engine.create_pdf_document"
+    parameters:
+      - name: title
+        type: string
+        required: true
+        description: Document title (used as the filename)
+      - name: code
+        type: string
+        required: true
+        description: >
+          Complete reportlab Python code that produces the .pdf file.
+          Must import reportlab and write the file to the current directory.

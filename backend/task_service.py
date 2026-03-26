@@ -249,15 +249,23 @@ task_service = TaskService()
 # ── Register built-in executors ─────────────────────────────────────────────
 
 
-@register_executor("create_doc")
-def execute_create_doc(user_id: str, params: Dict[str, Any]) -> Dict[str, Any]:
-    """Create a Google Doc."""
-    from tools.docs_writer import create_google_doc
+@register_executor("create_document")
+def execute_create_document(user_id: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Create a formatted binary document (docx/xlsx/pptx/pdf) from LLM-generated
+    code and upload it to Google Drive.
 
+    Expected params:
+        document_type : "docx" | "xlsx" | "pptx" | "pdf"
+        title         : human-readable document title (used as filename)
+        code          : complete generation code (JS for docx/pptx, Python for xlsx/pdf)
+    """
+    from tools.document_engine import execute_and_upload
+
+    document_type = params.get("document_type", "docx")
     title = params.get("title", "Untitled Document")
-    content = params.get("content", "")
-    result = create_google_doc(user_id, title, content)
-    return result
+    code = params.get("code", "")
+    return execute_and_upload(user_id, document_type, title, code)
 
 
 @register_executor("send_email")
@@ -281,16 +289,4 @@ def execute_draft_email(user_id: str, params: Dict[str, Any]) -> Dict[str, Any]:
     subject = params["subject"]
     body = params["body"]
     result = draft_email(user_id, to, subject, body)
-    return result
-
-
-@register_executor("create_sheet")
-def execute_create_sheet(user_id: str, params: Dict[str, Any]) -> Dict[str, Any]:
-    """Create a Google Sheet."""
-    from tools.sheets_writer import create_google_sheet
-
-    title = params.get("title", "Untitled Spreadsheet")
-    headers = params.get("headers", [])
-    rows = params.get("rows", None)
-    result = create_google_sheet(user_id, title, headers, rows)
     return result

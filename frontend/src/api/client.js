@@ -59,6 +59,14 @@ export async function getRequiredScopes() {
 }
 
 /**
+ * Check whether the user's stored token is missing any required scopes.
+ * Returns { needs_reauth: bool, missing_scopes: string[] }
+ */
+export async function checkNeedsReauth(userId) {
+  return apiRequest(`/auth/needs-reauth/${userId}`);
+}
+
+/**
  * List skills for a user.
  */
 export async function getSkills(userId) {

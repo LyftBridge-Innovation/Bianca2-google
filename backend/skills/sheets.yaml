@@ -75,26 +75,21 @@ tools:
         - source: "properties.sheetId"
           target: sheet_id
 
-  - name: create_google_sheet
+  - name: create_xlsx_spreadsheet
     description: >
-      Create a new Google Sheet with column headers and optional rows.
-      Use this for tables, trackers, lists, or structured tabular data.
-      Returns a shareable Drive link.
-    handler: "tools.sheets_writer.create_google_sheet"
+      Create a professional Excel (.xlsx) spreadsheet with formatting,
+      formulas, and multiple sheets. Write complete openpyxl Python code
+      that generates the file. Use for tables, trackers, budgets, financial
+      models, or any tabular data. Returns a Google Drive link.
+    handler: "tools.document_engine.create_xlsx_spreadsheet"
     parameters:
       - name: title
         type: string
         required: true
-        description: Spreadsheet title
-      - name: headers
-        type: array
-        items:
-          type: string
+        description: Spreadsheet title (used as the filename)
+      - name: code
+        type: string
         required: true
-        description: Column header names
-      - name: rows
-        type: array
-        items:
-          type: array
-        required: false
-        description: Data rows — each row is a list of values
+        description: >
+          Complete openpyxl Python code that produces the .xlsx file.
+          Must import openpyxl and write the file to the current directory.

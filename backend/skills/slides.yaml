@@ -1,13 +1,14 @@
 skill:
   name: slides
-  display_name: Google Slides
-  description: Read Google Slides presentations
+  display_name: Google Slides & PPTX
+  description: Read Google Slides presentations and create PowerPoint (.pptx) files
   icon: slideshow
 
 api:
   google_api: slides.googleapis.com
   scopes:
     - https://www.googleapis.com/auth/presentations.readonly
+    - https://www.googleapis.com/auth/drive.file
 
 tools:
   - name: get_presentation
@@ -48,3 +49,23 @@ tools:
           target: slide_id
         - source: "slideProperties.layoutObjectId"
           target: layout
+
+  - name: create_pptx_presentation
+    description: >
+      Create a professional PowerPoint (.pptx) presentation with custom
+      layouts, colors, charts, images, and rich formatting.
+      Write complete pptxgenjs JavaScript code that generates the file.
+      Use for pitch decks, slide decks, reports, or any presentation.
+      Returns a Google Drive link to the created file.
+    handler: "tools.document_engine.create_pptx_presentation"
+    parameters:
+      - name: title
+        type: string
+        required: true
+        description: Presentation title (used as the filename)
+      - name: code
+        type: string
+        required: true
+        description: >
+          Complete pptxgenjs JavaScript code that produces the .pptx file.
+          Must use require('pptxgenjs') and write the file to the current directory.

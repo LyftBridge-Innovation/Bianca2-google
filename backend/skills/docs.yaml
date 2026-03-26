@@ -47,18 +47,22 @@ tools:
         - source: body
           target: body
 
-  - name: create_google_doc
+  - name: create_docx_document
     description: >
-      Create a new Google Doc with a title and text content.
-      Use this to write reports, summaries, drafts, briefs,
-      or any structured text document. Returns a shareable Drive link.
-    handler: "tools.docs_writer.create_google_doc"
+      Create a professional Word (.docx) document with rich formatting —
+      headings, tables, bullet lists, page numbers, headers/footers.
+      Write complete docx-js JavaScript code that generates the file.
+      Use for reports, memos, letters, briefs, contracts, or any structured
+      text document. Returns a Google Drive link to the created file.
+    handler: "tools.document_engine.create_docx_document"
     parameters:
       - name: title
         type: string
         required: true
-        description: Document title
-      - name: content
+        description: Document title (used as the filename)
+      - name: code
         type: string
         required: true
-        description: Full document body text
+        description: >
+          Complete docx-js JavaScript code that produces the .docx file.
+          Must use require('docx') and write the file to the current directory.

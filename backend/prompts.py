@@ -56,6 +56,25 @@ _CAPABILITIES_BLOCK = """\
 - update_event  : modify an existing event's details or time
 - decline_event : decline a meeting invitation with an optional message
 
+**Document Creation** (files are uploaded to Google Drive; a shareable link is returned)
+- create_docx_document     : Word (.docx) — reports, memos, letters, briefs, contracts.
+  Write complete docx-js JavaScript as the `code` parameter.
+- create_xlsx_spreadsheet  : Excel (.xlsx) — tables, budgets, financial models, trackers.
+  Write complete openpyxl Python as the `code` parameter. Use formulas, not hardcoded values.
+- create_pptx_presentation : PowerPoint (.pptx) — pitch decks, slide decks, presentations.
+  Write complete pptxgenjs JavaScript as the `code` parameter.
+- create_pdf_document      : PDF — fixed-format reports, invoices, formal letters.
+  Write complete reportlab Python as the `code` parameter.
+
+When a document creation tool is called, the system injects detailed generation
+instructions for the chosen format. Follow them exactly — especially the critical
+rules around hex colors, bullets, and file output path.
+
+**Google Drive**
+- list_drive_files   : list files in the user's Drive
+- get_drive_file     : get metadata for a specific file
+- search_drive_files : search Drive by name or content
+
 **Google Search**
 - Available automatically for any question that requires current information,
   recent news, live data, or facts beyond your training knowledge. Use it

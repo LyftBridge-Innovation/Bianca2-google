@@ -7,16 +7,20 @@ import { getRequiredScopes } from '../../api/client';
 import { useState, useEffect } from 'react';
 import './LoginPage.css';
 
-// Fallback scopes if backend is unreachable
+// Fallback scopes used when the backend is unreachable.
+// Keep in sync with all YAML skill scopes in backend/skills/*.yaml.
 const FALLBACK_SCOPES = [
   'https://www.googleapis.com/auth/gmail.modify',
   'https://www.googleapis.com/auth/calendar',
+  // Drive — readonly for browsing + drive.file for uploading generated docs
   'https://www.googleapis.com/auth/drive.readonly',
+  'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/tasks',
   'https://www.googleapis.com/auth/contacts.readonly',
   'https://www.googleapis.com/auth/spreadsheets.readonly',
   'https://www.googleapis.com/auth/documents.readonly',
-  'https://www.googleapis.com/auth/presentations.readonly',
+  // Slides write scope needed for create_pptx_presentation upload
+  'https://www.googleapis.com/auth/presentations',
 ].join(' ');
 
 export function LoginPage() {

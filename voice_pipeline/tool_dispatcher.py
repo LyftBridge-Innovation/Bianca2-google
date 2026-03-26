@@ -21,15 +21,26 @@ from voice_config import DEBUG_LOGGING  # noqa: E402
 # These tool calls are offloaded to the task queue instead of running inline,
 # so the voice response is immediate and the user can track progress in Neural Config.
 BACKGROUND_TOOL_MAP = {
-    "create_google_doc": "create_doc",
-    "create_google_sheet": "create_sheet",
+    # Document creation — all route to the unified create_document executor
+    "create_docx_document": "create_document",
+    "create_xlsx_spreadsheet": "create_document",
+    "create_pptx_presentation": "create_document",
+    "create_pdf_document": "create_document",
+    # Email tools
     "send_email_message": "send_email",
     "draft_email_message": "draft_email",
 }
 
+# Maps tool name → document_type param value for create_document tasks
+_DOCUMENT_TOOL_TYPES: dict[str, str] = {
+    "create_docx_document": "docx",
+    "create_xlsx_spreadsheet": "xlsx",
+    "create_pptx_presentation": "pptx",
+    "create_pdf_document": "pdf",
+}
+
 BACKGROUND_FILLER: dict[str, str] = {
-    "create_doc": "I've queued that document for you — it'll be ready shortly. Check the Tasks tab in Neural Config to track progress.",
-    "create_sheet": "I've queued that spreadsheet for you. You can track it in the Tasks tab of Neural Config.",
+    "create_document": "I've queued that document for you — it'll be ready shortly. Check the Tasks tab in Neural Config to track progress.",
     "send_email": "I've queued that email for you. It'll be sent in a moment — you can track it in the Tasks tab.",
     "draft_email": "I've saved that as a draft in your queue. Check the Tasks tab in Neural Config when you're ready.",
 }
@@ -129,10 +140,14 @@ class ToolDispatcher:
         if task_type:
             try:
                 from task_service import task_service
+                # For document creation tasks, include document_type in params
+                params = dict(parameters)
+                if doc_type := _DOCUMENT_TOOL_TYPES.get(function_name):
+                    params["document_type"] = doc_type
                 task = task_service.create_task(
                     user_id=self.user_id,
                     task_type=task_type,
-                    parameters=parameters,
+                    parameters=params,
                 )
                 task_service.enqueue(task.task_id)
                 result = BACKGROUND_FILLER.get(task_type, f"I've queued that for you (task {task.task_id}).")

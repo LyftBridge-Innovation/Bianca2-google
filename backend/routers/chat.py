@@ -16,23 +16,56 @@ from memory_retrieval import retrieve_memories_for_message, format_memory_inject
 from skill_matcher import match_skills, build_skills_block
 from settings_loader import load_settings
 from task_service import task_service
+from document_skill_loader import get_document_skill_block
+import logging as _logging
+_chat_logger = _logging.getLogger(__name__)
 
 # ── Background task queue integration ─────────────────────────────────────────
 # Tool names that should be routed through the background task queue instead
 # of being executed synchronously in the chat loop.
 BACKGROUND_TOOL_MAP = {
-    "create_google_doc": "create_doc",
-    "create_google_sheet": "create_sheet",
+    # Document creation tools — all map to the unified create_document executor
+    "create_docx_document": "create_document",
+    "create_xlsx_spreadsheet": "create_document",
+    "create_pptx_presentation": "create_document",
+    "create_pdf_document": "create_document",
+    # Email tools
     "send_email_message": "send_email",
     "draft_email_message": "draft_email",
 }
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
+
+def _sanitize_messages(messages: list) -> list:
+    """
+    Gemini rejects any message whose content is an empty string or empty list.
+    Replace empty-content AIMessages (produced during tool-call turns) with a
+    single-space placeholder so Vertex AI doesn't reject the whole request with
+    'must include at least one parts field'.
+    """
+    from langchain_core.messages import AIMessage
+    sanitized = []
+    for msg in messages:
+        if isinstance(msg, AIMessage) and (msg.content == "" or msg.content == []):
+            # Preserve tool_calls; just give it a non-empty text body
+            sanitized.append(AIMessage(content=" ", tool_calls=msg.tool_calls or []))
+        else:
+            sanitized.append(msg)
+    return sanitized
+
 # Max number of past messages (user + assistant combined) included in each LLM
 # call.  The full history is always persisted in Firestore; this only controls
 # how many turns are sent as context to Gemini per request.
 MAX_HISTORY_MESSAGES = 20
+
+
+_DOCUMENT_TOOL_TYPES = {
+    "create_docx_document": "docx",
+    "create_xlsx_spreadsheet": "xlsx",
+    "create_pptx_presentation": "pptx",
+    "create_pdf_document": "pdf",
+}
 
 
 def _try_enqueue_background(tool_name: str, tool_args: dict, user_id: str, session_id: str):
@@ -45,10 +78,16 @@ def _try_enqueue_background(tool_name: str, tool_args: dict, user_id: str, sessi
     if not task_type:
         return False, None
 
+    # For document creation tasks, add document_type so the executor knows
+    # which format to generate.
+    params = dict(tool_args)
+    if doc_type := _DOCUMENT_TOOL_TYPES.get(tool_name):
+        params["document_type"] = doc_type
+
     task = task_service.create_task(
         user_id=user_id,
         task_type=task_type,
-        parameters=tool_args,
+        parameters=params,
         session_id=session_id,
     )
     task_service.enqueue(task.task_id)
@@ -62,26 +101,64 @@ def _try_enqueue_background(tool_name: str, tool_args: dict, user_id: str, sessi
     return True, result_str
 
 # LLM cache — recreated when model/temperature settings change
-_llm_cache = {"model": None, "temperature": None, "instance": None}
+_llm_cache: dict = {"model": None, "temperature": None, "api_key": None, "instance": None}
 
 
 def _get_llm():
-    """Return the LLM instance, recreating if settings changed."""
-    settings = load_settings()
-    model = settings.get("model", "gemini-2.5-flash")
-    temperature = settings.get("temperature", 0.7)
+    """
+    Return the LLM instance for the currently configured model.
 
-    if (_llm_cache["model"] != model or _llm_cache["temperature"] != temperature
-            or _llm_cache["instance"] is None):
+    Supports two providers:
+      - Anthropic  : any model whose name starts with "claude"
+      - Vertex AI  : everything else (gemini-*)
+
+    The instance is cached and recreated only when settings change.
+    """
+    import os
+    settings = load_settings()
+    model: str = settings.get("model", "claude-3-5-sonnet-20241022")
+    temperature: float = settings.get("temperature", 0.7)
+
+    # Resolve Anthropic key: settings override → env var
+    anthropic_key: str = (
+        settings.get("anthropic_api_key", "").strip()
+        or os.getenv("ANTHROPIC_API_KEY", "")
+    )
+
+    cache_key = (model, temperature, anthropic_key)
+    if (
+        _llm_cache["instance"] is None
+        or _llm_cache["model"] != model
+        or _llm_cache["temperature"] != temperature
+        or _llm_cache["api_key"] != anthropic_key
+    ):
         _llm_cache["model"] = model
         _llm_cache["temperature"] = temperature
-        _llm_cache["instance"] = ChatVertexAI(
-            model=model,
-            project=GCP_PROJECT_ID,
-            location=GCP_LOCATION,
-            temperature=temperature,
-            max_retries=6,
-        ).bind_tools(ALL_TOOLS)
+        _llm_cache["api_key"] = anthropic_key
+
+        if model.startswith("claude"):
+            from langchain_anthropic import ChatAnthropic
+            if not anthropic_key:
+                raise ValueError(
+                    "Anthropic API key is required for Claude models. "
+                    "Add ANTHROPIC_API_KEY to backend/.env or set it in Neural Config → System Prompt."
+                )
+            _llm_cache["instance"] = ChatAnthropic(
+                model=model,
+                temperature=temperature,
+                api_key=anthropic_key,
+                max_retries=4,
+            ).bind_tools(ALL_TOOLS)
+            _chat_logger.info("LLM: Anthropic %s", model)
+        else:
+            _llm_cache["instance"] = ChatVertexAI(
+                model=model,
+                project=GCP_PROJECT_ID,
+                location=GCP_LOCATION,
+                temperature=temperature,
+                max_retries=6,
+            ).bind_tools(ALL_TOOLS)
+            _chat_logger.info("LLM: Vertex AI %s", model)
 
     return _llm_cache["instance"]
 
@@ -195,11 +272,18 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
                 messages[0] = SystemMessage(content=f"{current_prompt}\n\n{skills_block}")
         # ────────────────────────────────────────────────────────────────────
 
+        # ── Document skill injection ──────────────────────────────────────
+        doc_skill_block = get_document_skill_block(request.message)
+        if doc_skill_block:
+            current_prompt = messages[0].content
+            messages[0] = SystemMessage(content=f"{current_prompt}\n\n{doc_skill_block}")
+        # ────────────────────────────────────────────────────────────────────
+
         # Track tool calls for logging
         session_tool_calls = []
         
         # Invoke LLM with tools
-        response = _get_llm().invoke(messages)
+        response = _get_llm().invoke(_sanitize_messages(messages))
         
         # Handle tool calls if present
         max_iterations = 5
@@ -287,7 +371,7 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
                 ))
             
             # Get next response from LLM
-            response = _get_llm().invoke(messages)
+            response = _get_llm().invoke(_sanitize_messages(messages))
         
         # Extract final text response
         if isinstance(response.content, str):
@@ -407,11 +491,17 @@ async def stream_chat_response(request: ChatRequest, background_tasks: Backgroun
                 current_prompt = messages[0].content
                 messages[0] = SystemMessage(content=f"{current_prompt}\n\n{skills_block}")
 
+        # Document skill injection
+        doc_skill_block = get_document_skill_block(request.message)
+        if doc_skill_block:
+            current_prompt = messages[0].content
+            messages[0] = SystemMessage(content=f"{current_prompt}\n\n{doc_skill_block}")
+
         # Track tool calls
         session_tool_calls = []
         
         # Run agentic loop FIRST (tool calls complete before streaming)
-        response = _get_llm().invoke(messages)
+        response = _get_llm().invoke(_sanitize_messages(messages))
         
         max_iterations = 5
         iteration = 0
@@ -495,13 +585,13 @@ async def stream_chat_response(request: ChatRequest, background_tasks: Backgroun
                     tool_call_id=tool_call["id"]
                 ))
             
-            response = _get_llm().invoke(messages)
+            response = _get_llm().invoke(_sanitize_messages(messages))
         
         # Now stream the final response token by token
         # Need to reinvoke with streaming to get tokens
         accumulated_content = ""
         
-        for chunk in _get_llm().stream(messages):
+        for chunk in _get_llm().stream(_sanitize_messages(messages)):
             if hasattr(chunk, 'content') and chunk.content:
                 # Handle both string and list content from streaming chunks
                 if isinstance(chunk.content, str):

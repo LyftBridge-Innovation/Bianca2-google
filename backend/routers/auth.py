@@ -99,10 +99,20 @@ async def google_callback(request: GoogleCallbackRequest):
         refresh_token = credentials.refresh_token
 
         if existing_user:
-            # Only overwrite refresh_token if Google returned a new one
-            # (Google only returns refresh_token on the first consent)
+            # Always update when Google returns a new token.
+            # If no new token was returned but the stored one is empty (e.g.
+            # it was manually cleared), we must require a new one.
             if refresh_token:
                 existing_user.google_refresh_token = refresh_token
+            elif not existing_user.google_refresh_token:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "No refresh token received and none is stored. "
+                        "Please revoke app access at https://myaccount.google.com/permissions "
+                        "and sign in again."
+                    ),
+                )
             existing_user.email = email
             existing_user.full_name = name
             fs.create_or_update_user(existing_user)
@@ -140,3 +150,47 @@ async def google_callback(request: GoogleCallbackRequest):
 def get_required_scopes():
     """Returns the OAuth scopes needed for the current skill configuration."""
     return {"scopes": _build_all_scopes()}
+
+
+@router.get("/needs-reauth/{user_id}")
+def check_needs_reauth(user_id: str):
+    """
+    Check whether the stored token for this user is missing any required scopes.
+
+    Calls Google's tokeninfo endpoint with the user's current access token and
+    compares against the scopes required by all active YAML skills.
+
+    Returns:
+        {needs_reauth: bool, missing_scopes: list[str]}
+    """
+    import requests as _requests
+
+    try:
+        from token_manager import get_access_token
+        access_token = get_access_token(user_id)
+    except Exception as e:
+        logger.warning("Could not get access token for user %s: %s", user_id, e)
+        return {"needs_reauth": True, "missing_scopes": [], "error": str(e)}
+
+    try:
+        resp = _requests.get(
+            "https://oauth2.googleapis.com/tokeninfo",
+            params={"access_token": access_token},
+            timeout=5,
+        )
+        if resp.status_code != 200:
+            return {"needs_reauth": True, "missing_scopes": [], "error": "tokeninfo returned non-200"}
+
+        token_info = resp.json()
+        granted_str = token_info.get("scope", "")
+        granted = set(granted_str.split())
+
+        # Only check googleapis.com scopes — openid/email/profile are excluded
+        required = {s for s in _build_all_scopes() if "googleapis.com" in s}
+        missing = sorted(required - granted)
+
+        return {"needs_reauth": bool(missing), "missing_scopes": missing}
+
+    except Exception as e:
+        logger.warning("tokeninfo check failed for user %s: %s", user_id, e)
+        return {"needs_reauth": False, "missing_scopes": [], "error": str(e)}
