@@ -1,0 +1,64 @@
+# Cloud Build CI/CD — builds Docker image and deploys to Cloud Run
+#
+# Trigger: push to main branch (configure in Google Cloud Build console)
+# Required substitutions (set in trigger or pass via --substitutions):
+#   _REGION         : Cloud Run region, e.g. us-central1
+#   _SERVICE_NAME   : Cloud Run service name, e.g. bianca-backend
+#   _GCP_PROJECT_ID : GCP project ID
+#   _PUBSUB_TOPIC   : Full Pub/Sub topic name for Gmail push
+
+steps:
+  # ── 1. Build Docker image ───────────────────────────────────────────────────
+  - name: 'gcr.io/cloud-builders/docker'
+    id: build
+    args:
+      - build
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/bianca/$_SERVICE_NAME:$SHORT_SHA'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/bianca/$_SERVICE_NAME:latest'
+      - '-f'
+      - 'Dockerfile'
+      - '.'
+
+  # ── 2. Push to Artifact Registry ────────────────────────────────────────────
+  - name: 'gcr.io/cloud-builders/docker'
+    id: push
+    args:
+      - push
+      - '--all-tags'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/bianca/$_SERVICE_NAME'
+
+  # ── 3. Deploy to Cloud Run ───────────────────────────────────────────────────
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: deploy
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - '$_SERVICE_NAME'
+      - '--image=${_REGION}-docker.pkg.dev/$PROJECT_ID/bianca/$_SERVICE_NAME:$SHORT_SHA'
+      - '--region=$_REGION'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--port=8080'
+      - '--cpu=1'
+      - '--memory=1Gi'
+      - '--concurrency=80'
+      # No --min-instances — purely event-driven, safe to scale to zero
+      - '--set-env-vars=GCP_PROJECT_ID=$_GCP_PROJECT_ID,GMAIL_PUBSUB_TOPIC=$_PUBSUB_TOPIC'
+      # Secrets are mounted from Secret Manager at runtime
+      - '--set-secrets=ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest,GOOGLE_WORKSPACE_CLI_TOKEN=GOOGLE_WORKSPACE_CLI_TOKEN:latest'
+
+substitutions:
+  _REGION: us-central1
+  _SERVICE_NAME: bianca-backend
+  _GCP_PROJECT_ID: your-project-id
+  _PUBSUB_TOPIC: projects/your-project-id/topics/gmail-push
+
+images:
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/bianca/$_SERVICE_NAME:$SHORT_SHA'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/bianca/$_SERVICE_NAME:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

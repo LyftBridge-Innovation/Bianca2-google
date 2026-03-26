@@ -265,4 +265,35 @@ export async function retryTask(taskId, userId) {
   });
 }
 
+// ── Email Agent API ──────────────────────────────────────────────────────────
+
+/**
+ * Get the current email agent status for a user.
+ * Returns { enabled, label_name, watch_expiry, watch_active, replied_count }
+ */
+export async function getEmailAgentStatus(userId) {
+  return apiRequest(`/email-agent/status?user_id=${encodeURIComponent(userId)}`);
+}
+
+/**
+ * Enable the email agent for a user with the given Gmail label name.
+ * Returns { ok, label_name, label_id, watch_expiry }
+ */
+export async function enableEmailAgent(userId, labelName) {
+  return apiRequest('/email-agent/enable', {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId, label_name: labelName }),
+  });
+}
+
+/**
+ * Disable the email agent for a user.
+ */
+export async function disableEmailAgent(userId) {
+  return apiRequest('/email-agent/disable', {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId }),
+  });
+}
+
 export { API_BASE_URL };

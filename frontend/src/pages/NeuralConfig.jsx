@@ -18,6 +18,9 @@ import {
   cancelTask,
   deleteTaskAPI,
   retryTask,
+  getEmailAgentStatus,
+  enableEmailAgent,
+  disableEmailAgent,
   API_BASE_URL,
 } from '../api/client';
 import './NeuralConfig.css';
@@ -145,6 +148,12 @@ export function NeuralConfig({ onGoToChat }) {
   const [tasksPage, setTasksPage] = useState(1);
   const TASKS_PER_PAGE = 10;
 
+  // ── Email Agent tab ────────────────────────────────────────────────────────
+  const [emailAgentStatus, setEmailAgentStatus] = useState(null);
+  const [emailAgentLoading, setEmailAgentLoading] = useState(false);
+  const [emailAgentLabelInput, setEmailAgentLabelInput] = useState('');
+  const [emailAgentSaving, setEmailAgentSaving] = useState(false);
+
   // ── Toast notifications ─────────────────────────────────────────────────
   const [toasts, setToasts] = useState([]);
 
@@ -164,7 +173,17 @@ export function NeuralConfig({ onGoToChat }) {
         .catch((err) => alert(`Failed to load settings: ${err.message}`))
         .finally(() => setSettingsLoading(false));
     }
-  }, [activeTab, settings, settingsLoading]);
+    if (activeTab === 'integrations' && emailAgentStatus === null && !emailAgentLoading) {
+      setEmailAgentLoading(true);
+      getEmailAgentStatus(user.userId)
+        .then((data) => {
+          setEmailAgentStatus(data);
+          setEmailAgentLabelInput(data.label_name || '');
+        })
+        .catch(() => setEmailAgentStatus({ enabled: false, label_name: '', watch_active: false, replied_count: 0 }))
+        .finally(() => setEmailAgentLoading(false));
+    }
+  }, [activeTab, settings, settingsLoading, emailAgentStatus, emailAgentLoading]);
 
   // Load tasks when tasks tab is selected
   useEffect(() => {
@@ -1210,26 +1229,100 @@ export function NeuralConfig({ onGoToChat }) {
                 </div>
               </div>
 
-              {/* Email Polling */}
+              {/* Email Agent */}
               <div className="nc-integration-card">
                 <div className="nc-integration-header">
-                  <div className="nc-integration-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 4l7 5 7-5M2 4v10h14V4" stroke="currentColor" strokeWidth="1.3"/></svg></div>
-                  <span className="nc-integration-title">Email Polling</span>
+                  <div className="nc-integration-icon">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                      <path d="M2 4l7 5 7-5M2 4v10h14V4" stroke="currentColor" strokeWidth="1.3"/>
+                    </svg>
+                  </div>
+                  <span className="nc-integration-title">Email Agent</span>
+                  {emailAgentStatus?.watch_active && (
+                    <span className="nc-status-badge configured">Active</span>
+                  )}
+                  {emailAgentStatus?.enabled && !emailAgentStatus?.watch_active && (
+                    <span className="nc-status-badge" style={{ background: 'rgba(224,90,90,0.15)', color: '#e05a5a', borderColor: 'rgba(224,90,90,0.3)' }}>Watch Expired</span>
+                  )}
                 </div>
-                <div className="nc-integration-desc">How frequently the AI checks for new emails.</div>
-                <div className="nc-slider-row" style={{ marginBottom: 10 }}>
-                  <span className="nc-prompt-stat">1 min</span>
-                  <input type="range" className="nc-slider" min="1" max="60" step="1" value={settings.email_polling_interval || 15}
-                    onChange={(e) => updateSetting('email_polling_interval', parseInt(e.target.value))} />
-                  <span className="nc-prompt-stat">60 min</span>
-                  <span className="nc-slider-value">{settings.email_polling_interval || 15} min</span>
+                <div className="nc-integration-desc">
+                  Bianca monitors a Gmail label and auto-replies to incoming emails using your full persona and context. Powered by Gmail Push Notifications — instant, no polling.
                 </div>
-                <div className="nc-voice-options">
-                  <button className={`nc-voice-chip${settings.email_polling_days === 'weekdays' ? ' active' : ''}`}
-                    onClick={() => updateSetting('email_polling_days', 'weekdays')}>Weekdays</button>
-                  <button className={`nc-voice-chip${settings.email_polling_days === 'everyday' ? ' active' : ''}`}
-                    onClick={() => updateSetting('email_polling_days', 'everyday')}>Everyday</button>
-                </div>
+
+                {emailAgentLoading ? (
+                  <div className="nc-loading" style={{ padding: '8px 0' }}>Loading...</div>
+                ) : (
+                  <>
+                    <div style={{ marginBottom: 10 }}>
+                      <label className="nc-form-label">Gmail Label to Watch</label>
+                      <input
+                        className="nc-template-input"
+                        placeholder="e.g. Bianca_Contacts"
+                        value={emailAgentLabelInput}
+                        onChange={(e) => setEmailAgentLabelInput(e.target.value)}
+                        disabled={emailAgentStatus?.enabled}
+                      />
+                      <div className="nc-subsection-hint">
+                        Create this label in Gmail and set up a filter to route emails there. Bianca will only reply to emails in this label.
+                      </div>
+                    </div>
+
+                    {emailAgentStatus?.enabled && (
+                      <div style={{ marginBottom: 12, fontSize: 12, color: 'var(--text-muted)' }}>
+                        Watching <strong style={{ color: 'var(--text-secondary)' }}>{emailAgentStatus.label_name}</strong>
+                        {emailAgentStatus.replied_count > 0 && (
+                          <> · Replied to <strong style={{ color: 'var(--accent-gold)' }}>{emailAgentStatus.replied_count}</strong> email{emailAgentStatus.replied_count !== 1 ? 's' : ''}</>
+                        )}
+                        {emailAgentStatus.watch_expiry && (
+                          <> · Watch renews automatically</>
+                        )}
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {!emailAgentStatus?.enabled ? (
+                        <button
+                          className="nc-save-btn"
+                          disabled={emailAgentSaving || !emailAgentLabelInput.trim()}
+                          onClick={async () => {
+                            setEmailAgentSaving(true);
+                            try {
+                              const result = await enableEmailAgent(user.userId, emailAgentLabelInput.trim());
+                              setEmailAgentStatus({ enabled: true, label_name: result.label_name, watch_active: true, watch_expiry: result.watch_expiry, replied_count: 0 });
+                              addToast(`Email agent enabled — watching "${result.label_name}"`, 'success');
+                            } catch (err) {
+                              addToast(`Failed to enable: ${err.message}`, 'error');
+                            } finally {
+                              setEmailAgentSaving(false);
+                            }
+                          }}
+                        >
+                          {emailAgentSaving ? 'Enabling...' : 'Enable Agent'}
+                        </button>
+                      ) : (
+                        <button
+                          className="nc-save-btn"
+                          style={{ background: 'rgba(224,90,90,0.12)', borderColor: 'rgba(224,90,90,0.3)', color: '#e05a5a' }}
+                          disabled={emailAgentSaving}
+                          onClick={async () => {
+                            setEmailAgentSaving(true);
+                            try {
+                              await disableEmailAgent(user.userId);
+                              setEmailAgentStatus((prev) => ({ ...prev, enabled: false, watch_active: false }));
+                              addToast('Email agent disabled', 'info');
+                            } catch (err) {
+                              addToast(`Failed to disable: ${err.message}`, 'error');
+                            } finally {
+                              setEmailAgentSaving(false);
+                            }
+                          }}
+                        >
+                          {emailAgentSaving ? 'Disabling...' : 'Disable Agent'}
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* GWS Templates */}

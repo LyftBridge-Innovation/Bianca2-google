@@ -13,3 +13,7 @@ google-cloud-firestore
 google-cloud-aiplatform
 google-cloud-discoveryengine
 pyyaml
+anthropic
+langchain-anthropic
+openpyxl
+reportlab

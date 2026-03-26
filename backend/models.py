@@ -27,6 +27,14 @@ class User(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+    # ── Email Agent ────────────────────────────────────────────────────────────
+    email_agent_enabled: bool = False
+    email_agent_label_name: str = ""     # Gmail label name user configures
+    email_agent_label_id: str = ""       # Resolved Gmail label ID
+    email_agent_history_id: str = ""     # Last processed Gmail historyId
+    email_agent_watch_expiry: int = 0    # Unix timestamp in ms (watch expires after 7 days)
+    email_agent_replied_count: int = 0   # Lifetime count of auto-replies sent
+
 
 class Message(BaseModel):
     """Message object within a session."""
