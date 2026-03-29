@@ -49,9 +49,8 @@ const MODEL_GROUPS = [
     provider: 'Google Gemini',
     color: '#4dc8f5',
     models: [
-      { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', desc: 'Fast & efficient' },
+      { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', desc: 'Default — fast & efficient' },
       { id: 'gemini-2.5-pro',   label: 'Gemini 2.5 Pro',   desc: 'Most capable Gemini' },
-      { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash', desc: 'Stable, multimodal' },
     ],
   },
 ];
