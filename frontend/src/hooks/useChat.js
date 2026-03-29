@@ -53,26 +53,23 @@ export function useChat(userId) {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
-      let accumulatedContent = ''; // Track content locally
+      let accumulatedContent = '';
+      let currentEventType = '';
 
       while (true) {
         const { done, value } = await reader.read();
-        
         if (done) break;
 
-        // Decode the chunk and add to buffer
         buffer += decoder.decode(value, { stream: true });
-
-        // Process complete SSE events in the buffer
         const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+        buffer = lines.pop() || '';
 
         for (const line of lines) {
           if (line.startsWith('event:')) {
-            // Event type - we infer this from data structure
+            currentEventType = line.substring(6).trim();
             continue;
           }
-          
+
           if (line.startsWith('data:')) {
             const dataStr = line.substring(5).trim();
             if (!dataStr) continue;
@@ -80,20 +77,33 @@ export function useChat(userId) {
             try {
               const data = JSON.parse(dataStr);
 
-              // Handle different event types
+              if (currentEventType === 'error' || data.message) {
+                // Backend sent an error — show it in chat
+                const errText = data.message || 'Something went wrong. Please try again.';
+                console.error('[SSE] Error event:', errText);
+                setMessages(prev => [...prev, {
+                  role: 'assistant',
+                  content: `Sorry, I ran into an issue: ${errText}`,
+                  timestamp: new Date().toISOString(),
+                }]);
+                currentEventType = '';
+                continue;
+              }
+
               if (data.session_id && !sessionId) {
-                // session event
                 console.log('[SSE] Session created:', data.session_id);
                 setSessionId(data.session_id);
               } else if (data.tool && data.status) {
-                // tool_call event
                 console.log('[SSE] Tool call:', data.tool);
                 setCurrentToolCall(data.tool);
               } else if (data.token) {
-                // token event
                 accumulatedContent += data.token;
                 setStreamingContent(accumulatedContent);
+              } else if (data.done) {
+                // explicit done signal
               }
+
+              currentEventType = '';
             } catch (e) {
               console.error('Failed to parse SSE data:', e);
             }
@@ -102,15 +112,12 @@ export function useChat(userId) {
       }
 
       // Stream complete - add assistant message
-      console.log('[SSE] Stream complete. Accumulated content length:', accumulatedContent.length);
       if (accumulatedContent) {
-        const assistantMessage = {
+        setMessages(prev => [...prev, {
           role: 'assistant',
           content: accumulatedContent,
           timestamp: new Date().toISOString(),
-        };
-        console.log('[SSE] Adding assistant message to UI');
-        setMessages(prev => [...prev, assistantMessage]);
+        }]);
       } else {
         console.warn('[SSE] No content accumulated during stream');
       }
