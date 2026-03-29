@@ -2,6 +2,9 @@
 .env
 **/.env
 
+# Reference / scratch directories — never commit
+reference/
+
 # Google OAuth credentials — never commit these
 credentials.json
 client_secret*.json
