@@ -116,7 +116,7 @@ def _get_llm():
     """
     import os
     settings = load_settings()
-    model: str = settings.get("model", "claude-3-5-sonnet-20241022")
+    model: str = settings.get("model", "gemini-2.5-flash")
     temperature: float = settings.get("temperature", 0.7)
 
     # Resolve Anthropic key: settings override → env var

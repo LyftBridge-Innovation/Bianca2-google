@@ -12,8 +12,9 @@ _DEFAULT_SETTINGS: dict[str, Any] = {
     "ai_voice": "shimmer",
     "primary_language": "English",
     "secondary_language": "",
-    # Default to Claude Sonnet — override in Neural Config → System Prompt tab
-    "model": "claude-sonnet-4-5-20250929",
+    # Default to Gemini 2.5 Flash on Vertex AI — works with ADC, no external key needed.
+    # Switch to a Claude model in Neural Config → System Prompt tab.
+    "model": "gemini-2.5-flash",
     "temperature": 0.7,
     "custom_prompt": "",
     "slides_template_id": "",
