@@ -1,4 +1,5 @@
 import { useSessions } from '../../hooks/useSessions';
+import { Footer } from './Footer';
 import './Sidebar.css';
 
 export function Sidebar({
@@ -140,7 +141,7 @@ export function Sidebar({
         )}
       </div>
 
-      {/* Footer — navigation buttons */}
+      {/* Footer — navigation buttons + branding */}
       <div className="sidebar-footer">
         <button
           className={`sidebar-config-btn ${activeView === 'marketplace' ? 'active' : ''}`}
@@ -169,6 +170,7 @@ export function Sidebar({
           <span className="sidebar-config-label">Neural Config</span>
         </button>
       </div>
+      <Footer className="sidebar-brand-footer" />
     </div>
   );
 }

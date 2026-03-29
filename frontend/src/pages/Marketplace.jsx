@@ -4,7 +4,10 @@ import remarkGfm from 'remark-gfm';
 import { useAuth } from '../hooks/useAuth';
 import { getMarketplaceSkills, installFromMarketplace, unpublishSkill } from '../api/client';
 import { useSkills } from '../hooks/useSkills';
+import { Footer } from '../components/Layout/Footer';
 import './Marketplace.css';
+
+const LOGO = import.meta.env.BASE_URL + 'lyftbridge.jpeg';
 
 export function Marketplace({ onGoToChat }) {
   const { user } = useAuth();
@@ -93,6 +96,9 @@ export function Marketplace({ onGoToChat }) {
         <button onClick={onGoToChat} className="mp-back-btn">
           ← Back to Chat
         </button>
+        <div className="mp-header-brand">
+          <img src={LOGO} alt="Lyftbridge" className="mp-header-logo" />
+        </div>
         <h1 className="mp-title">Skill Marketplace</h1>
         <p className="mp-subtitle">Discover and install skills from the community</p>
       </header>
@@ -239,6 +245,7 @@ export function Marketplace({ onGoToChat }) {
           </div>
         </div>
       )}
+      <Footer className="mp-footer" />
     </div>
   );
 }

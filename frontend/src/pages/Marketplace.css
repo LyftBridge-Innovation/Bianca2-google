@@ -15,6 +15,21 @@
   margin-bottom: 32px;
 }
 
+.mp-header-brand {
+  margin-bottom: 20px;
+}
+
+.mp-header-logo {
+  height: 24px;
+  width: auto;
+  opacity: 0.75;
+  filter: drop-shadow(0 1px 6px rgba(41, 108, 172, 0.15));
+}
+
+.mp-footer {
+  margin-top: 40px;
+}
+
 .mp-back-btn {
   padding: 8px 16px;
   background: transparent;

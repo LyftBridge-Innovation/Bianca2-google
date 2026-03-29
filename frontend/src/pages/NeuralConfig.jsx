@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { Footer } from '../components/Layout/Footer';
 import { useAuth } from '../hooks/useAuth';
 import { useSkills } from '../hooks/useSkills';
 import {
@@ -24,6 +25,8 @@ import {
   API_BASE_URL,
 } from '../api/client';
 import './NeuralConfig.css';
+
+const LOGO = import.meta.env.BASE_URL + 'lyftbridge.jpeg';
 
 const VOICE_OPTIONS = [
   { id: 'shimmer', label: 'Shimmer', desc: 'Warm female' },
@@ -540,7 +543,10 @@ export function NeuralConfig({ onGoToChat }) {
     <div className="neural-config">
       {/* Header */}
       <div className="nc-header">
-        <h1 className="nc-title">Neural Config</h1>
+        <div className="nc-header-left">
+          <img src={LOGO} alt="Lyftbridge" className="nc-header-logo" />
+          <h1 className="nc-title">Neural Config</h1>
+        </div>
         <button className="nc-back-btn" onClick={onGoToChat}>
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M11 4L6 9L11 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
           Back to Chat
@@ -1502,6 +1508,7 @@ export function NeuralConfig({ onGoToChat }) {
           ))}
         </div>
       )}
+      <Footer className="nc-footer" />
     </div>
   );
 }

@@ -1,0 +1,25 @@
+.lb-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.lb-footer__logo {
+  height: 16px;
+  width: auto;
+  opacity: 0.55;
+  filter: grayscale(30%);
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.lb-footer__copy {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}

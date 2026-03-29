@@ -194,8 +194,25 @@
 
 /* ─── Footer — config button ────────────────────────────────────────────── */
 .sidebar-footer {
-  padding: 12px 12px 16px;
+  padding: 12px 12px 8px;
   border-top: 1px solid var(--border-subtle);
+}
+
+/* ─── Lyftbridge branding strip ─────────────────────────────────────────── */
+.sidebar-brand-footer {
+  padding: 8px 12px 14px;
+  border-top: none;
+  gap: 6px;
+}
+
+.sidebar-brand-footer .lb-footer__logo {
+  height: 13px;
+  opacity: 0.4;
+}
+
+.sidebar-brand-footer .lb-footer__copy {
+  font-size: 10px;
+  opacity: 0.6;
 }
 
 .sidebar-config-btn {

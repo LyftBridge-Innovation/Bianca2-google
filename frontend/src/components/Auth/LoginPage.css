@@ -66,6 +66,33 @@
   animation: loginIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* ─── Lyftbridge logo ────────────────────────────────────────────────────── */
+.login-logo {
+  width: 110px;
+  height: auto;
+  margin: 0 auto 28px;
+  display: block;
+  opacity: 0.88;
+  filter: drop-shadow(0 2px 12px rgba(41, 108, 172, 0.18));
+}
+
+/* ─── Developed by ───────────────────────────────────────────────────────── */
+.login-by {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin: 4px 0 48px 0;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.login-footer {
+  margin-top: 28px;
+  border-top-color: rgba(255, 255, 255, 0.05);
+  padding-top: 16px;
+}
+
+/* ─── Title ──────────────────────────────────────────────────────────────── */
 .login-title {
   font-family: var(--font-display);
   font-size: 80px;
@@ -85,7 +112,7 @@
   font-size: 11px;
   font-weight: 500;
   color: var(--text-secondary);
-  margin: 0 0 60px 0;
+  margin: 0 0 10px 0;
   letter-spacing: 0.18em;
   text-transform: uppercase;
 }

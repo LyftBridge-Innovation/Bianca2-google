@@ -5,7 +5,10 @@ import { useGoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../../hooks/useAuth';
 import { getRequiredScopes } from '../../api/client';
 import { useState, useEffect } from 'react';
+import { Footer } from '../Layout/Footer';
 import './LoginPage.css';
+
+const LOGO = import.meta.env.BASE_URL + 'lyftbridge.jpeg';
 
 // Fallback scopes used when the backend is unreachable.
 // Keep in sync with all YAML skill scopes in backend/skills/*.yaml.
@@ -62,8 +65,10 @@ export function LoginPage() {
     <div className="login-page">
       <div className="login-ambient-gold" />
       <div className="login-content">
+        <img src={LOGO} alt="Lyftbridge" className="login-logo" />
         <h1 className="login-title">Bianca</h1>
         <p className="login-subtitle">Your AI Chief of Staff</p>
+        <p className="login-by">Developed by Lyftbridge</p>
         <div className="login-button-container">
           <button
             className="google-signin-btn"
@@ -83,6 +88,7 @@ export function LoginPage() {
         <p className="login-permissions-note">
           Grants access to Gmail, Calendar, Drive, Tasks, Contacts &amp; more
         </p>
+        <Footer className="login-footer" />
       </div>
     </div>
   );
