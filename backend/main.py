@@ -9,6 +9,7 @@ from routers.skills import router as skills_router
 from routers.config import router as config_router
 from routers.tasks import router as tasks_router
 from routers.email_agent import router as email_agent_router
+from routers.twilio_voice import router as twilio_voice_router
 
 app = FastAPI(title="AI Chief of Staff", version="0.3.0")
 
@@ -30,6 +31,7 @@ app.include_router(skills_router)
 app.include_router(config_router)
 app.include_router(tasks_router)
 app.include_router(email_agent_router)
+app.include_router(twilio_voice_router)
 
 
 @app.get("/")

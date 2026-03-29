@@ -22,6 +22,8 @@ import {
   getEmailAgentStatus,
   enableEmailAgent,
   disableEmailAgent,
+  getPhoneNumber,
+  savePhoneNumber,
   API_BASE_URL,
 } from '../api/client';
 import './NeuralConfig.css';
@@ -156,6 +158,11 @@ export function NeuralConfig({ onGoToChat }) {
   const [emailAgentLabelInput, setEmailAgentLabelInput] = useState('');
   const [emailAgentSaving, setEmailAgentSaving] = useState(false);
 
+  // ── Phone number (Twilio voice) ────────────────────────────────────────────
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneLoaded, setPhoneLoaded] = useState(false);
+  const [phoneSaving, setPhoneSaving] = useState(false);
+
   // ── Toast notifications ─────────────────────────────────────────────────
   const [toasts, setToasts] = useState([]);
 
@@ -185,7 +192,13 @@ export function NeuralConfig({ onGoToChat }) {
         .catch(() => setEmailAgentStatus({ enabled: false, label_name: '', watch_active: false, replied_count: 0 }))
         .finally(() => setEmailAgentLoading(false));
     }
-  }, [activeTab, settings, settingsLoading, emailAgentStatus, emailAgentLoading]);
+    if (activeTab === 'integrations' && !phoneLoaded) {
+      setPhoneLoaded(true);
+      getPhoneNumber(user.userId)
+        .then((data) => setPhoneNumber(data.phone_number || ''))
+        .catch(() => setPhoneNumber(''));
+    }
+  }, [activeTab, settings, settingsLoading, emailAgentStatus, emailAgentLoading, phoneLoaded]);
 
   // Load tasks when tasks tab is selected
   useEffect(() => {
@@ -1231,6 +1244,74 @@ export function NeuralConfig({ onGoToChat }) {
                   <label className="nc-form-label">Voice System Prompt</label>
                   <textarea className="nc-custom-prompt" placeholder="Voice-specific instructions (keep under 500 chars)" value={settings.voice_prompt || ''} onChange={(e) => updateSetting('voice_prompt', e.target.value)} style={{ minHeight: 100 }} />
                   <div className="nc-subsection-hint">{(settings.voice_prompt || '').length}/1000 chars {(settings.voice_prompt || '').length > 500 && '(warning: keep under 500 for best results)'}</div>
+                </div>
+              </div>
+
+              {/* Phone Number — Twilio Voice */}
+              <div className="nc-integration-card">
+                <div className="nc-integration-header">
+                  <div className="nc-integration-icon">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                      <path d="M4.5 2C4.5 2 3 2 3 3.5c0 1.2.7 4.3 4.5 8.1C11.3 15.4 14.4 16 15.5 16c1.5 0 1.5-1.5 1.5-1.5v-2.2c0-.4-.3-.8-.7-.9l-2.3-.5c-.4-.1-.8.1-1 .4l-.7.9c-.2.3-.6.4-.9.2-1-.6-3.2-2.8-3.8-3.8-.2-.3-.1-.7.2-.9l.9-.7c.3-.2.5-.6.4-1L9.4 3.7c-.1-.4-.5-.7-.9-.7H4.5z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <span className="nc-integration-title">Phone Number</span>
+                  {phoneNumber && <span className="nc-status-badge configured">Registered</span>}
+                </div>
+                <div className="nc-integration-desc">
+                  Register your phone number so Bianca recognizes you when you call. Bianca will answer with full access to your Gmail, Calendar, Drive, and all tools.
+                </div>
+                <div style={{ marginBottom: 10 }}>
+                  <label className="nc-form-label">Your Phone Number (E.164 format)</label>
+                  <input
+                    className="nc-template-input"
+                    placeholder="+14155552671"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                  />
+                  <div className="nc-subsection-hint">
+                    Include country code, e.g. +1 for US. This must match the number you call from.
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    className="nc-save-btn"
+                    disabled={phoneSaving || !phoneNumber.trim()}
+                    onClick={async () => {
+                      setPhoneSaving(true);
+                      try {
+                        await savePhoneNumber(user.userId, phoneNumber.trim());
+                        addToast('Phone number saved — Bianca will recognize your calls.', 'success');
+                      } catch (err) {
+                        addToast(`Failed to save: ${err.message}`, 'error');
+                      } finally {
+                        setPhoneSaving(false);
+                      }
+                    }}
+                  >
+                    {phoneSaving ? 'Saving...' : 'Save Number'}
+                  </button>
+                  {phoneNumber && (
+                    <button
+                      className="nc-save-btn"
+                      style={{ background: 'rgba(224,90,90,0.12)', borderColor: 'rgba(224,90,90,0.3)', color: '#e05a5a' }}
+                      disabled={phoneSaving}
+                      onClick={async () => {
+                        setPhoneSaving(true);
+                        try {
+                          await savePhoneNumber(user.userId, '');
+                          setPhoneNumber('');
+                          addToast('Phone number removed.', 'info');
+                        } catch (err) {
+                          addToast(`Failed to remove: ${err.message}`, 'error');
+                        } finally {
+                          setPhoneSaving(false);
+                        }
+                      }}
+                    >
+                      Remove
+                    </button>
+                  )}
                 </div>
               </div>
 

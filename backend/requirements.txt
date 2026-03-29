@@ -17,3 +17,4 @@ anthropic
 langchain-anthropic
 openpyxl
 reportlab
+twilio>=9.0

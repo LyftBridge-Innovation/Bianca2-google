@@ -296,4 +296,25 @@ export async function disableEmailAgent(userId) {
   });
 }
 
+// ── Phone number registration ────────────────────────────────────────────────
+
+/**
+ * Get the phone number registered for a user.
+ * Returns { phone_number: string }
+ */
+export async function getPhoneNumber(userId) {
+  return apiRequest(`/config/phone?user_id=${encodeURIComponent(userId)}`);
+}
+
+/**
+ * Save (or clear) the phone number for a user.
+ * phoneNumber should be in E.164 format, e.g. "+14155552671"
+ */
+export async function savePhoneNumber(userId, phoneNumber) {
+  return apiRequest('/config/phone', {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId, phone_number: phoneNumber }),
+  });
+}
+
 export { API_BASE_URL };

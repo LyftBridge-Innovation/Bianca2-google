@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from values import BIANCA_VALUES
@@ -69,6 +69,11 @@ class CourseItem(BaseModel):
 class EducationData(BaseModel):
     degrees: list[DegreeItem]
     courses: list[CourseItem]
+
+
+class PhoneNumberRequest(BaseModel):
+    user_id: str
+    phone_number: str
 
 
 # ── Knowledge endpoints ───────────────────────────────────────────────────────
@@ -191,6 +196,37 @@ def save_education(body: EducationData):
         "courses": [c.model_dump() for c in body.courses],
     }
     _save_education(data)
+    return {"ok": True}
+
+
+# ── Phone number registration ────────────────────────────────────────────────
+
+@router.get("/phone")
+def get_phone_number(user_id: str = Query(...)):
+    """Return the phone number registered for the given user."""
+    try:
+        from firestore_client import get_firestore_client
+        db = get_firestore_client()
+        doc = db.collection("users").document(user_id).get()
+        if doc.exists:
+            return {"phone_number": doc.to_dict().get("phone_number", "")}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return {"phone_number": ""}
+
+
+@router.post("/phone")
+def save_phone_number(body: PhoneNumberRequest):
+    """Save (or clear) the phone number for a user in Firestore."""
+    try:
+        from firestore_client import get_firestore_client
+        db = get_firestore_client()
+        db.collection("users").document(body.user_id).set(
+            {"phone_number": body.phone_number.strip()},
+            merge=True,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     return {"ok": True}
 
 
