@@ -25,13 +25,17 @@ from tools.drive_uploader import upload_file_to_drive
 logger = logging.getLogger(__name__)
 
 EXECUTION_TIMEOUT = 120  # seconds
-NPM_INSTALL_TIMEOUT = 120  # seconds — separate budget for npm install
+NPM_INSTALL_TIMEOUT = 120  # seconds — fallback for local dev only
 
 # npm packages required per document type
 _JS_PACKAGES: dict[str, list[str]] = {
     "pptx": ["pptxgenjs"],
     "docx": ["docx"],
 }
+
+# Pre-installed node_modules baked into the Docker image at build time.
+# On Cloud Run this path always exists — symlinked at runtime, zero npm calls.
+_PREINSTALLED_NODE_MODULES = "/app/npm_deps/node_modules"
 
 # ── Filename helpers ──────────────────────────────────────────────────────────
 
@@ -111,33 +115,39 @@ def _patch_py_output_path(code: str, output_file: str) -> str:
 
 def _npm_install(packages: list[str], work_dir: str) -> None:
     """
-    Install npm packages locally into work_dir so the generated script can
-    require() them without any global installs being present.
-    """
-    # Initialise a minimal package.json so npm doesn't complain
-    init = subprocess.run(
-        ["npm", "init", "-y"],
-        cwd=work_dir,
-        capture_output=True,
-        text=True,
-        timeout=30,
-    )
-    if init.returncode != 0:
-        logger.warning("npm init warning: %s", init.stderr.strip()[:200])
+    Make npm packages available in work_dir for the generated script.
 
-    result = subprocess.run(
-        ["npm", "install", "--prefer-offline", "--no-audit", "--no-fund"] + packages,
-        cwd=work_dir,
-        capture_output=True,
-        text=True,
-        timeout=NPM_INSTALL_TIMEOUT,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"npm install {packages} failed (exit {result.returncode}).\n"
-            f"stderr: {result.stderr.strip()[:500]}"
+    On Cloud Run: symlinks the pre-installed node_modules from the Docker image
+    (baked in at build time) — no network calls, no timeout risk.
+
+    Local dev fallback: runs npm install if the pre-installed path doesn't exist.
+    """
+    # Write a minimal package.json directly — no need for `npm init -y`
+    pkg_json_path = os.path.join(work_dir, "package.json")
+    with open(pkg_json_path, "w", encoding="utf-8") as f:
+        f.write('{"name":"bianca-doc","version":"1.0.0","private":true}\n')
+
+    node_modules_dest = os.path.join(work_dir, "node_modules")
+
+    if os.path.isdir(_PREINSTALLED_NODE_MODULES):
+        # Fast path: symlink pre-installed modules (Docker image)
+        os.symlink(_PREINSTALLED_NODE_MODULES, node_modules_dest)
+        logger.info("Using pre-installed node_modules from %s", _PREINSTALLED_NODE_MODULES)
+    else:
+        # Local dev fallback: install from npm registry
+        result = subprocess.run(
+            ["npm", "install", "--prefer-offline", "--no-audit", "--no-fund"] + packages,
+            cwd=work_dir,
+            capture_output=True,
+            text=True,
+            timeout=NPM_INSTALL_TIMEOUT,
         )
-    logger.info("npm install %s → OK", packages)
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"npm install {packages} failed (exit {result.returncode}).\n"
+                f"stderr: {result.stderr.strip()[:500]}"
+            )
+        logger.info("npm install %s → OK (local)", packages)
 
 
 def _wrap_in_async_runner(user_code: str, output_file: str) -> str:

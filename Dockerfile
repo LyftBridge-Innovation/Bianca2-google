@@ -25,6 +25,13 @@ RUN npm install -g @google/workspace-cli 2>/dev/null || \
 # Fallback: ensure npx can find gws at runtime (npx gws auto-installs)
 ENV GWS_CLI_PATH="npx --yes gws"
 
+# Pre-install JS document generation libraries at a fixed location.
+# The document engine symlinks this at runtime — no per-request npm install needed.
+RUN mkdir -p /app/npm_deps && \
+    echo '{"name":"bianca-docs","version":"1.0.0","private":true}' > /app/npm_deps/package.json && \
+    npm install --prefix /app/npm_deps --no-audit --no-fund docx pptxgenjs && \
+    echo "docx + pptxgenjs pre-installed"
+
 # ── Python dependencies ───────────────────────────────────────────────────────
 COPY backend/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt \
