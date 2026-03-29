@@ -32,6 +32,9 @@ RUN pip install --no-cache-dir -r /app/requirements.txt \
 
 # ── Application code ──────────────────────────────────────────────────────────
 COPY backend/ /app/
+# voice_pipeline is imported at runtime by routers/voice.py via sys.path
+# (resolves to ../../voice_pipeline → /voice_pipeline from /app/routers/)
+COPY voice_pipeline/ /voice_pipeline/
 
 WORKDIR /app
 
