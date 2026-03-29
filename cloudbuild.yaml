@@ -43,9 +43,9 @@ steps:
       - '--memory=1Gi'
       - '--concurrency=80'
       # No --min-instances — purely event-driven, safe to scale to zero
-      - '--set-env-vars=GCP_PROJECT_ID=$_GCP_PROJECT_ID,GMAIL_PUBSUB_TOPIC=$_PUBSUB_TOPIC,FIREBASE_DATABASE_NAME=$_FIREBASE_DATABASE_NAME'
-      # ANTHROPIC_API_KEY injected from Secret Manager at runtime
-      - '--set-secrets=ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest'
+      - '--set-env-vars=GCP_PROJECT_ID=$_GCP_PROJECT_ID,GMAIL_PUBSUB_TOPIC=$_PUBSUB_TOPIC,FIREBASE_DATABASE_NAME=$_FIREBASE_DATABASE_NAME,GOOGLE_WEB_CLIENT_ID=$_GOOGLE_CLIENT_ID,GOOGLE_CLIENT_ID=$_GOOGLE_CLIENT_ID,FIREBASE_PROJECT_ID=$_GCP_PROJECT_ID,VERTEX_PROJECT_ID=$_GCP_PROJECT_ID,VERTEX_DATASTORE_ID=$_VERTEX_DATASTORE_ID,VERTEX_LOCATION=global,ASSISTANT_NAME=Bianca'
+      # Secrets injected from Secret Manager at runtime
+      - '--set-secrets=ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest,GOOGLE_WEB_CLIENT_SECRET=GOOGLE_WEB_CLIENT_SECRET:latest,GOOGLE_CLIENT_SECRET=GOOGLE_WEB_CLIENT_SECRET:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest'
 
 substitutions:
   _REGION: us-central1
@@ -53,6 +53,8 @@ substitutions:
   _GCP_PROJECT_ID: bianca2-73d98
   _PUBSUB_TOPIC: projects/bianca2-73d98/topics/gmail-push
   _FIREBASE_DATABASE_NAME: bianca2
+  _GOOGLE_CLIENT_ID: 1068648751681-l8q67075qjac041gjsgbd5mlpqdd2ftc.apps.googleusercontent.com
+  _VERTEX_DATASTORE_ID: bianca-memories_1771699589953
 
 images:
   - '${_REGION}-docker.pkg.dev/$PROJECT_ID/bianca/$_SERVICE_NAME:latest'
