@@ -197,83 +197,23 @@ async def media_stream(websocket: WebSocket, user_id: str = ""):
       { "event": "media", "streamSid": "MZ...", "media": { "payload": "<base64_ulaw>" } }
     """
     await websocket.accept()
+    _log.info("Twilio media stream WebSocket accepted — user_id=%r", user_id)
 
     if not user_id:
+        _log.warning("Media stream opened without user_id — closing 1008")
         await websocket.close(code=1008, reason="user_id query parameter is required")
         return
-
-    _log.info("Twilio media stream opened — user_id=%s", user_id)
 
     # ── Firestore session ─────────────────────────────────────────────────────
     fs = FirestoreCollections()
     session_doc = Session(user_id=user_id, modality="voice")
     session_id = fs.create_session(session_doc)
+    _log.info("Firestore session created — session_id=%s user_id=%s", session_id, user_id)
 
     # ── Mutable call state ────────────────────────────────────────────────────
     transcript_buffer: list[dict] = []
     memory_injected = False
-
-    # ── GeminiSession callbacks ───────────────────────────────────────────────
-
-    async def on_transcript(role: str, text: str) -> None:
-        nonlocal memory_injected
-        transcript_buffer.append({"role": role, "text": text})
-        _log.debug("[%s] transcript %s: %s", session_id[:8], role, text[:80])
-
-        # Inject relevant memories on the first user utterance
-        if role == "user" and not memory_injected:
-            memory_injected = True
-            try:
-                from memory_retrieval import (
-                    retrieve_memories_for_message,
-                    format_memory_injection,
-                )
-                mem = retrieve_memories_for_message(user_message=text, user_id=user_id)
-                if mem["total_count"] > 0:
-                    block = format_memory_injection(
-                        event_memories=mem["event_memories"],
-                        entity_memories=mem["entity_memories"],
-                    )
-                    await gemini.send_text(
-                        f"Background context from previous sessions:\n{block}",
-                        end_of_turn=True,
-                    )
-            except Exception as exc:
-                _log.debug("Memory injection skipped: %s", exc)
-
-    async def on_tool_call(tool_name: str) -> None:
-        _log.info("Tool call: %s (user=%s)", tool_name, user_id)
-
-    async def on_tool_call_complete(
-        tool_name: str, parameters: dict, result: str
-    ) -> None:
-        try:
-            fs.append_tool_call(
-                session_id, ToolCall(tool_name=tool_name, parameters=parameters, result=result)
-            )
-            readable = generate_human_readable(tool_name, parameters, result)
-            fs.log_tool_action(
-                ToolActionLog(
-                    user_id=user_id,
-                    session_id=session_id,
-                    tool_name=tool_name,
-                    human_readable=readable,
-                    parameters=parameters,
-                    result=result,
-                    modality="voice",
-                )
-            )
-        except Exception as exc:
-            _log.debug("Tool log error: %s", exc)
-
-    # ── Session setup ─────────────────────────────────────────────────────────
-    gemini = GeminiSession(
-        user_id=user_id,
-        enable_tools=True,
-        on_transcript=on_transcript,
-        on_tool_call=on_tool_call,
-        on_tool_call_complete=on_tool_call_complete,
-    )
+    gemini = None  # declared here so finally block can reference it
 
     receive_task: asyncio.Task | None = None
     drain_task:   asyncio.Task | None = None
@@ -281,9 +221,72 @@ async def media_stream(websocket: WebSocket, user_id: str = ""):
     connected = False
 
     try:
+        # ── GeminiSession callbacks ───────────────────────────────────────────
+
+        async def on_transcript(role: str, text: str) -> None:
+            nonlocal memory_injected
+            transcript_buffer.append({"role": role, "text": text})
+            _log.debug("[%s] transcript %s: %s", session_id[:8], role, text[:80])
+
+            if role == "user" and not memory_injected:
+                memory_injected = True
+                try:
+                    from memory_retrieval import (
+                        retrieve_memories_for_message,
+                        format_memory_injection,
+                    )
+                    mem = retrieve_memories_for_message(user_message=text, user_id=user_id)
+                    if mem["total_count"] > 0:
+                        block = format_memory_injection(
+                            event_memories=mem["event_memories"],
+                            entity_memories=mem["entity_memories"],
+                        )
+                        await gemini.send_text(
+                            f"Background context from previous sessions:\n{block}",
+                            end_of_turn=True,
+                        )
+                except Exception as exc:
+                    _log.debug("Memory injection skipped: %s", exc)
+
+        async def on_tool_call(tool_name: str) -> None:
+            _log.info("Tool call: %s (user=%s)", tool_name, user_id)
+
+        async def on_tool_call_complete(
+            tool_name: str, parameters: dict, result: str
+        ) -> None:
+            try:
+                fs.append_tool_call(
+                    session_id, ToolCall(tool_name=tool_name, parameters=parameters, result=result)
+                )
+                readable = generate_human_readable(tool_name, parameters, result)
+                fs.log_tool_action(
+                    ToolActionLog(
+                        user_id=user_id,
+                        session_id=session_id,
+                        tool_name=tool_name,
+                        human_readable=readable,
+                        parameters=parameters,
+                        result=result,
+                        modality="voice",
+                    )
+                )
+            except Exception as exc:
+                _log.debug("Tool log error: %s", exc)
+
+        # ── Build GeminiSession (inside try so constructor errors are caught) ─
+        _log.info("Building GeminiSession for user_id=%s …", user_id)
+        gemini = GeminiSession(
+            user_id=user_id,
+            enable_tools=True,
+            on_transcript=on_transcript,
+            on_tool_call=on_tool_call,
+            on_tool_call_complete=on_tool_call_complete,
+        )
+        _log.info("GeminiSession built — connecting to Gemini Live …")
+
         await gemini.connect()
         connected = True
-        _log.info("Gemini Live connected for user_id=%s", user_id)
+        _log.info("Gemini Live connected — user_id=%s", user_id)
 
         # Main Twilio message loop
         while True:
@@ -325,7 +328,10 @@ async def media_stream(websocket: WebSocket, user_id: str = ""):
     except WebSocketDisconnect:
         _log.info("Twilio WebSocket disconnected — user_id=%s", user_id)
     except Exception as exc:
-        _log.error("Media stream error (user=%s): %s", user_id, exc, exc_info=True)
+        _log.error(
+            "Media stream FATAL error (user=%s): %s",
+            user_id, exc, exc_info=True,
+        )
 
     finally:
         # ── Persist transcript to Firestore ───────────────────────────────────
@@ -350,7 +356,7 @@ async def media_stream(websocket: WebSocket, user_id: str = ""):
             if task:
                 task.cancel()
 
-        if connected:
+        if connected and gemini:
             await gemini.close()
 
         _log.info("Media stream cleanup complete — user_id=%s session=%s", user_id, session_id)
