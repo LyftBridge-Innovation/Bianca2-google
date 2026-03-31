@@ -12,7 +12,7 @@ GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 MODEL = "gemini-2.5-flash-native-audio-preview-12-2025"
 
 # Vertex AI Live model (used on Cloud Run via Application Default Credentials)
-VERTEX_MODEL = "gemini-2.0-flash-live-001"
+VERTEX_MODEL = "gemini-3.1-flash-live-preview"
 
 # ── Audio ─────────────────────────────────────────────────────────────────────
 # pyaudio is only needed for local mic/speaker (not in FastAPI server context)
