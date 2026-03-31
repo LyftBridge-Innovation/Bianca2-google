@@ -51,23 +51,8 @@ class GeminiSession:
         self.user_id = user_id
         self.api_key = api_key or GEMINI_API_KEY
 
-        # On Cloud Run GCP_PROJECT_ID is always injected — prefer Vertex AI (ADC, no API key).
-        # Fall back to AI Studio API key only when running locally without a GCP project.
-        vertex_project = os.getenv("GCP_PROJECT_ID") or os.getenv("VERTEX_PROJECT_ID", "")
-        if vertex_project:
-            self.client = genai.Client(
-                vertexai=True,
-                project=vertex_project,
-                location=os.getenv("VERTEX_LOCATION", "us-central1"),
-            )
-            self._model = VERTEX_MODEL
-            if DEBUG_LOGGING:
-                print(f"🔧 Using Vertex AI client (project={vertex_project})")
-        else:
-            self.client = genai.Client(api_key=self.api_key)
-            self._model = MODEL
-            if DEBUG_LOGGING:
-                print(f"🔧 Using AI Studio client")
+        self.client = genai.Client(api_key=self.api_key)
+        self._model = MODEL
 
         self.session = None
         self._connection = None
