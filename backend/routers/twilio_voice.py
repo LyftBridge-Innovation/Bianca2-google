@@ -145,6 +145,14 @@ async def incoming_call(request: Request):
     """
     form_data = dict(await request.form())
 
+    # ── Status-change callbacks from Twilio (not new inbound calls) ──────────
+    # When "Call Status Changes" webhook fires it includes CallStatus but no
+    # meaningful TwiML action is needed — return 204 immediately.
+    call_status = form_data.get("CallStatus", "")
+    if call_status and call_status not in ("", "ringing"):
+        _log.info("Twilio status callback — CallStatus=%s, ignoring", call_status)
+        return Response(status_code=204)
+
     if not _validate_twilio_signature(request, form_data):
         _log.warning("Twilio signature validation failed")
         return Response(
@@ -154,7 +162,9 @@ async def incoming_call(request: Request):
         )
 
     from_number = form_data.get("From", "").strip()
-    _log.info("Incoming Twilio call from: %s", from_number)
+    _log.info(
+        "Incoming Twilio call — From=%s CallStatus=%s", from_number, call_status
+    )
 
     if not from_number:
         return Response(
@@ -172,7 +182,11 @@ async def incoming_call(request: Request):
 
     # Derive the host from the incoming request so this works on any deployment
     host = request.headers.get("host") or request.url.netloc
-    _log.info("Connecting call from %s (user_id=%s) to Gemini stream", from_number, user_id)
+    stream_url = f"wss://{host}/voice/twilio/stream?user_id={user_id}"
+    _log.info(
+        "Routing call from %s → user_id=%s stream_url=%s",
+        from_number, user_id, stream_url,
+    )
 
     return Response(
         content=_twiml_stream(host, user_id),
