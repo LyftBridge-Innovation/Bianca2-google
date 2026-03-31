@@ -55,13 +55,20 @@ _TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
 # ── TwiML builders ─────────────────────────────────────────────────────────────
 
 def _twiml_stream(host: str, user_id: str) -> str:
-    """TwiML that connects the call to our Media Stream WebSocket."""
-    ws_url = f"wss://{host}/voice/twilio/stream?user_id={user_id}"
+    """TwiML that connects the call to our Media Stream WebSocket.
+
+    user_id is passed via a <Parameter> child element — Twilio strips URL query
+    params on WebSocket upgrade, but delivers <Parameter> values in the 'start'
+    event as customParameters.
+    """
+    ws_url = f"wss://{host}/voice/twilio/stream"
     return (
         '<?xml version="1.0" encoding="UTF-8"?>'
         "<Response>"
         "<Connect>"
-        f'<Stream url="{ws_url}" />'
+        f'<Stream url="{ws_url}">'
+        f'<Parameter name="user_id" value="{user_id}"/>'
+        "</Stream>"
         "</Connect>"
         "</Response>"
     )
@@ -182,10 +189,9 @@ async def incoming_call(request: Request):
 
     # Derive the host from the incoming request so this works on any deployment
     host = request.headers.get("host") or request.url.netloc
-    stream_url = f"wss://{host}/voice/twilio/stream?user_id={user_id}"
     _log.info(
-        "Routing call from %s → user_id=%s stream_url=%s",
-        from_number, user_id, stream_url,
+        "Routing call from %s → user_id=%s stream host=%s",
+        from_number, user_id, host,
     )
 
     return Response(
@@ -197,37 +203,35 @@ async def incoming_call(request: Request):
 # ── Media stream — WebSocket bridge ──────────────────────────────────────────
 
 @router.websocket("/stream")
-async def media_stream(websocket: WebSocket, user_id: str = ""):
+async def media_stream(websocket: WebSocket):
     """
     Twilio Media Streams WebSocket.
 
     Message protocol (Twilio → us):
       { "event": "connected" }
-      { "event": "start",  "streamSid": "MZ...", "start": { "streamSid": "MZ...", ... } }
+      { "event": "start",  "streamSid": "MZ...", "start": { "streamSid": "MZ...",
+          "customParameters": { "user_id": "..." }, ... } }
       { "event": "media",  "streamSid": "MZ...", "media": { "payload": "<base64_ulaw>" } }
       { "event": "stop",   "streamSid": "MZ...", "stop": { ... } }
 
     Message protocol (us → Twilio):
       { "event": "media", "streamSid": "MZ...", "media": { "payload": "<base64_ulaw>" } }
+
+    user_id is delivered in the 'start' event's customParameters — Twilio strips URL
+    query params on WebSocket upgrade, so we use <Parameter> in the TwiML instead.
     """
     await websocket.accept()
-    _log.info("Twilio media stream WebSocket accepted — user_id=%r", user_id)
+    _log.info("Twilio media stream WebSocket accepted — waiting for 'start' event")
 
-    if not user_id:
-        _log.warning("Media stream opened without user_id — closing 1008")
-        await websocket.close(code=1008, reason="user_id query parameter is required")
-        return
-
-    # ── Firestore session ─────────────────────────────────────────────────────
-    fs = FirestoreCollections()
-    session_doc = Session(user_id=user_id, modality="voice")
-    session_id = fs.create_session(session_doc)
-    _log.info("Firestore session created — session_id=%s user_id=%s", session_id, user_id)
+    # user_id is unknown until we receive the 'start' event from Twilio
+    user_id: str = ""
 
     # ── Mutable call state ────────────────────────────────────────────────────
     transcript_buffer: list[dict] = []
     memory_injected = False
     gemini = None  # declared here so finally block can reference it
+    session_id: str = ""
+    fs: FirestoreCollections | None = None
 
     receive_task: asyncio.Task | None = None
     drain_task:   asyncio.Task | None = None
@@ -287,22 +291,8 @@ async def media_stream(websocket: WebSocket, user_id: str = ""):
             except Exception as exc:
                 _log.debug("Tool log error: %s", exc)
 
-        # ── Build GeminiSession (inside try so constructor errors are caught) ─
-        _log.info("Building GeminiSession for user_id=%s …", user_id)
-        gemini = GeminiSession(
-            user_id=user_id,
-            enable_tools=True,
-            on_transcript=on_transcript,
-            on_tool_call=on_tool_call,
-            on_tool_call_complete=on_tool_call_complete,
-        )
-        _log.info("GeminiSession built — connecting to Gemini Live …")
-
-        await gemini.connect()
-        connected = True
-        _log.info("Gemini Live connected — user_id=%s", user_id)
-
-        # Main Twilio message loop
+        # ── Main Twilio message loop ──────────────────────────────────────────
+        # GeminiSession is built lazily on the 'start' event (when user_id arrives)
         while True:
             raw = await websocket.receive_text()
             msg = json.loads(raw)
@@ -312,12 +302,45 @@ async def media_stream(websocket: WebSocket, user_id: str = ""):
                 _log.debug("Twilio protocol 'connected'")
 
             elif event == "start":
-                # streamSid appears at the top level and/or inside msg["start"]
+                # streamSid
                 stream_sid = (
                     msg.get("streamSid")
                     or msg.get("start", {}).get("streamSid", "")
                 )
-                _log.info("Stream started — streamSid=%s", stream_sid)
+                # user_id from <Parameter> elements in TwiML
+                user_id = (
+                    msg.get("start", {})
+                    .get("customParameters", {})
+                    .get("user_id", "")
+                    .strip()
+                )
+                _log.info(
+                    "Stream started — streamSid=%s user_id=%s", stream_sid, user_id
+                )
+
+                if not user_id:
+                    _log.error("No user_id in 'start' customParameters — closing")
+                    break
+
+                # ── Firestore session ─────────────────────────────────────────
+                fs = FirestoreCollections()
+                session_doc = Session(user_id=user_id, modality="voice")
+                session_id = fs.create_session(session_doc)
+                _log.info("Firestore session created — %s", session_id)
+
+                # ── Build + connect GeminiSession ─────────────────────────────
+                _log.info("Building GeminiSession for user_id=%s …", user_id)
+                gemini = GeminiSession(
+                    user_id=user_id,
+                    enable_tools=True,
+                    on_transcript=on_transcript,
+                    on_tool_call=on_tool_call,
+                    on_tool_call_complete=on_tool_call_complete,
+                )
+                _log.info("Connecting to Gemini Live …")
+                await gemini.connect()
+                connected = True
+                _log.info("Gemini Live connected — user_id=%s", user_id)
 
                 bridge = TwilioAudioBridge(websocket, stream_sid)
                 receive_task = asyncio.create_task(gemini.receive_loop(bridge))
@@ -349,16 +372,17 @@ async def media_stream(websocket: WebSocket, user_id: str = ""):
 
     finally:
         # ── Persist transcript to Firestore ───────────────────────────────────
-        try:
-            for entry in transcript_buffer:
-                fs.append_message(
-                    session_id, Message(role=entry["role"], content=entry["text"])
-                )
-        except Exception as exc:
-            _log.debug("Transcript save error: %s", exc)
+        if fs and session_id:
+            try:
+                for entry in transcript_buffer:
+                    fs.append_message(
+                        session_id, Message(role=entry["role"], content=entry["text"])
+                    )
+            except Exception as exc:
+                _log.debug("Transcript save error: %s", exc)
 
         # ── Trigger async summarization ───────────────────────────────────────
-        if len(transcript_buffer) >= 2:
+        if user_id and session_id and len(transcript_buffer) >= 2:
             try:
                 loop = asyncio.get_event_loop()
                 loop.run_in_executor(None, summarize_session_sync, user_id, session_id)
