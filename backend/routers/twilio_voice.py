@@ -81,16 +81,31 @@ def _twiml_say(message: str) -> str:
 # ── Twilio signature validation ───────────────────────────────────────────────
 
 def _validate_twilio_signature(request: Request, form_data: dict) -> bool:
-    """Return True if the request is legitimately from Twilio (or if dev-mode)."""
+    """Return True if the request is legitimately from Twilio (or if dev-mode).
+
+    Cloud Run terminates TLS before uvicorn, so request.url uses http://.
+    Twilio signs with https://, so we must reconstruct the canonical public URL
+    from the X-Forwarded-Proto / host headers that Cloud Run injects.
+    """
     if not _TWILIO_AUTH_TOKEN:
         return True  # Dev / local — skip validation
     try:
         from twilio.request_validator import RequestValidator
         validator = RequestValidator(_TWILIO_AUTH_TOKEN)
         sig = request.headers.get("X-Twilio-Signature", "")
-        return validator.validate(str(request.url), form_data, sig)
-    except Exception:
-        return True  # Fail open if twilio library unavailable
+
+        # Reconstruct the public HTTPS URL (Cloud Run strips TLS before uvicorn)
+        proto = request.headers.get("x-forwarded-proto") or "https"
+        host  = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
+        url   = f"{proto}://{host}{request.url.path}"
+        if request.url.query:
+            url += f"?{request.url.query}"
+
+        _log.debug("Twilio sig validation — url=%s sig=%s", url, sig[:8] + "...")
+        return validator.validate(url, form_data, sig)
+    except Exception as exc:
+        _log.warning("Twilio signature validation error: %s — failing open", exc)
+        return True  # Fail open; prevents outage if twilio lib has issues
 
 
 # ── Firestore phone-number lookup ─────────────────────────────────────────────
