@@ -9,11 +9,12 @@ What changed from the original:
 - close() / disconnect() are both available (same thing)
 """
 import asyncio
+import os
 from typing import Optional, Callable
 from google import genai
 from google.genai import types
 
-from voice_config import GEMINI_API_KEY, MODEL, DEBUG_LOGGING, DEFAULT_USER_ID
+from voice_config import GEMINI_API_KEY, MODEL, VERTEX_MODEL, DEBUG_LOGGING, DEFAULT_USER_ID
 from voice_prompts import SYSTEM_INSTRUCTION
 from tool_declarations import build_tools_config
 from tool_dispatcher import ToolDispatcher
@@ -49,7 +50,25 @@ class GeminiSession:
         """
         self.user_id = user_id
         self.api_key = api_key or GEMINI_API_KEY
-        self.client = genai.Client(api_key=self.api_key)
+
+        # Prefer Vertex AI when GCP_PROJECT_ID is set (Cloud Run / server env).
+        # Fall back to API key for local dev.
+        vertex_project = os.getenv("GCP_PROJECT_ID") or os.getenv("VERTEX_PROJECT_ID", "")
+        if vertex_project and not self.api_key:
+            self.client = genai.Client(
+                vertexai=True,
+                project=vertex_project,
+                location=os.getenv("VERTEX_LOCATION", "us-central1"),
+            )
+            self._model = VERTEX_MODEL
+            if DEBUG_LOGGING:
+                print(f"🔧 Using Vertex AI client (project={vertex_project})")
+        else:
+            self.client = genai.Client(api_key=self.api_key)
+            self._model = MODEL
+            if DEBUG_LOGGING:
+                print(f"🔧 Using AI Studio client")
+
         self.session = None
         self._connection = None
 
@@ -74,7 +93,7 @@ class GeminiSession:
     async def connect(self):
         """Open the Gemini Live WebSocket session."""
         self._connection = self.client.aio.live.connect(
-            model=MODEL,
+            model=self._model,
             config=self._config,
         )
         self.session = await self._connection.__aenter__()
