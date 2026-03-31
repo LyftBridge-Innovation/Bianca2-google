@@ -18,3 +18,4 @@ langchain-anthropic
 openpyxl
 reportlab
 twilio>=9.0
+python-multipart
