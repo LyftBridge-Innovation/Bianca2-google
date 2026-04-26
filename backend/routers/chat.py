@@ -519,7 +519,7 @@ async def stream_chat_response(request: ChatRequest, background_tasks: Backgroun
                     "user_message": request.message,
                     "document_type": doc_type,
                     "title": title,
-                    "model": _settings.get("model", "claude-sonnet-4-5-20250929"),
+                    "model": _settings.get("model", "claude-sonnet-4-6"),
                     "anthropic_api_key": (
                         _settings.get("anthropic_api_key", "").strip()
                         or os.environ.get("ANTHROPIC_API_KEY", "")

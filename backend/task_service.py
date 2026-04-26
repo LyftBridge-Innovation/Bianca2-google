@@ -291,7 +291,7 @@ def execute_generate_and_create_document(user_id: str, params: Dict[str, Any]) -
     title = params.get("title", "Document")
 
     settings = load_settings()
-    model = params.get("model") or settings.get("model", "claude-sonnet-4-5-20250929")
+    model = params.get("model") or settings.get("model", "claude-sonnet-4-6")
     api_key = (
         params.get("anthropic_api_key", "").strip()
         or settings.get("anthropic_api_key", "").strip()

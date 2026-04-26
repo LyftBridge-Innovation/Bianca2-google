@@ -12,8 +12,8 @@ _DEFAULT_SETTINGS: dict[str, Any] = {
     "ai_voice": "Aoede",
     "primary_language": "English",
     "secondary_language": "",
-    # Default to Claude Sonnet 4.5 — switch to Gemini in Neural Config → System Prompt tab.
-    "model": "claude-sonnet-4-5-20250929",
+    # Default to Claude Sonnet 4.6 — switch to Gemini in Neural Config → System Prompt tab.
+    "model": "claude-sonnet-4-6",
     "temperature": 0.7,
     "custom_prompt": "",
     "slides_template_id": "",
