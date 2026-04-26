@@ -1,6 +1,7 @@
 """Config router — knowledge base, values, identity, education, and system prompt."""
 
 import json
+import os
 import re
 from pathlib import Path
 from typing import Any, Optional
@@ -17,6 +18,7 @@ router = APIRouter(prefix="/config", tags=["config"])
 _KNOWLEDGE_DIR = Path(__file__).parent.parent / "knowledge"
 _VALUES_OVERRIDE_PATH = _KNOWLEDGE_DIR / "values_override.json"
 _EDUCATION_PATH = _KNOWLEDGE_DIR / "education.json"
+_RESUME_PATH = _KNOWLEDGE_DIR / "resume.json"
 
 _KNOWLEDGE_SECTIONS = [
     ("01_persona", "Persona & Identity"),
@@ -74,6 +76,18 @@ class EducationData(BaseModel):
 class PhoneNumberRequest(BaseModel):
     user_id: str
     phone_number: str
+
+
+class ExperienceItem(BaseModel):
+    title: str
+    organization: str
+    startDate: str
+    endDate: str = ""
+    description: str = ""
+
+
+class ResumeData(BaseModel):
+    experience: list[ExperienceItem]
 
 
 # ── Knowledge endpoints ───────────────────────────────────────────────────────
@@ -199,6 +213,37 @@ def save_education(body: EducationData):
     return {"ok": True}
 
 
+# ── Resume endpoints (experience) ────────────────────────────────────────────
+
+def _load_resume() -> dict:
+    if _RESUME_PATH.exists():
+        try:
+            return json.loads(_RESUME_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {"experience": []}
+
+
+def _save_resume(data: dict) -> None:
+    _RESUME_PATH.write_text(
+        json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+
+
+@router.get("/resume")
+def get_resume():
+    """Return the current resume data (work experience)."""
+    return _load_resume()
+
+
+@router.put("/resume")
+def save_resume(body: ResumeData):
+    """Save updated resume data (work experience)."""
+    data = {"experience": [e.model_dump() for e in body.experience]}
+    _save_resume(data)
+    return {"ok": True}
+
+
 # ── Phone number registration ────────────────────────────────────────────────
 
 @router.get("/phone")
@@ -228,6 +273,30 @@ def save_phone_number(body: PhoneNumberRequest):
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     return {"ok": True}
+
+
+# ── Security keys status ─────────────────────────────────────────────────────
+
+@router.get("/security-status")
+def get_security_status():
+    """Return boolean presence flags for configured API keys and secrets.
+    Values are never returned — only whether each key is set."""
+    settings = load_settings()
+    return {
+        "google_api_key": bool(
+            settings.get("google_api_key", "").strip()
+            or os.getenv("GOOGLE_API_KEY", "")
+        ),
+        "anthropic_api_key": bool(
+            settings.get("anthropic_api_key", "").strip()
+            or os.getenv("ANTHROPIC_API_KEY", "")
+        ),
+        "google_workspace_token": bool(os.getenv("GOOGLE_WORKSPACE_CLI_TOKEN", "")),
+        "twilio": bool(
+            os.getenv("TWILIO_ACCOUNT_SID", "")
+            and os.getenv("TWILIO_AUTH_TOKEN", "")
+        ),
+    }
 
 
 # ── System prompt preview ────────────────────────────────────────────────────

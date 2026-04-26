@@ -117,10 +117,15 @@ def _validate_twilio_signature(request: Request, form_data: dict) -> bool:
 
 # ── Firestore phone-number lookup ─────────────────────────────────────────────
 
-def _lookup_user_by_phone(phone_number: str) -> tuple[str | None, str | None]:
+def _lookup_user_by_phone(
+    phone_number: str,
+) -> tuple[str | None, str, str, str | None]:
     """
     Look up a Bianca user by their registered phone_number field in Firestore.
-    Returns (user_id, None) on success or (None, error_message) on failure.
+
+    Returns:
+        (user_id, full_name, email, None)       — on success
+        (None,    "",        "",    error_msg)   — on failure
     """
     try:
         from firestore_client import get_firestore_client
@@ -132,14 +137,20 @@ def _lookup_user_by_phone(phone_number: str) -> tuple[str | None, str | None]:
             .stream()
         )
         if docs:
-            return docs[0].id, None
-        return None, (
+            data = docs[0].to_dict() or {}
+            return (
+                docs[0].id,
+                data.get("full_name", ""),
+                data.get("email", ""),
+                None,
+            )
+        return None, "", "", (
             "Sorry, this number is not registered with Bianca. "
             "Please sign in to Bianca and add your phone number under Neural Config, Integrations."
         )
     except Exception as exc:
         _log.error("Firestore phone lookup error: %s", exc)
-        return None, "Service temporarily unavailable. Please try again shortly."
+        return None, "", "", "Service temporarily unavailable. Please try again shortly."
 
 
 # ── Incoming call — TwiML webhook ─────────────────────────────────────────────
@@ -179,7 +190,7 @@ async def incoming_call(request: Request):
             media_type="application/xml",
         )
 
-    user_id, error_msg = _lookup_user_by_phone(from_number)
+    user_id, _full_name, _email, error_msg = _lookup_user_by_phone(from_number)
     if error_msg:
         _log.warning("Phone lookup failed for %s: %s", from_number, error_msg)
         return Response(
@@ -328,14 +339,41 @@ async def media_stream(websocket: WebSocket):
                 session_id = fs.create_session(session_doc)
                 _log.info("Firestore session created — %s", session_id)
 
+                # ── Fetch caller profile from Firestore ───────────────────────
+                caller_full_name = ""
+                caller_email = ""
+                try:
+                    from firestore_client import get_firestore_client
+                    db = get_firestore_client()
+                    user_doc = db.collection("users").document(user_id).get()
+                    if user_doc.exists:
+                        udata = user_doc.to_dict() or {}
+                        caller_full_name = udata.get("full_name", "")
+                        caller_email     = udata.get("email", "")
+                except Exception as exc:
+                    _log.warning("Could not fetch caller profile: %s", exc)
+
+                caller_first = caller_full_name.split()[0] if caller_full_name else ""
+
+                # Build a one-line identity note appended to Bianca's system instruction
+                if caller_full_name or caller_email:
+                    caller_context = (
+                        f"The person calling is {caller_full_name}"
+                        + (f" (email: {caller_email})" if caller_email else "")
+                        + ". Address them by their first name throughout the call."
+                    )
+                else:
+                    caller_context = ""
+
                 # ── Build + connect GeminiSession ─────────────────────────────
-                _log.info("Building GeminiSession for user_id=%s …", user_id)
+                _log.info("Building GeminiSession for user_id=%s name=%r …", user_id, caller_full_name)
                 gemini = GeminiSession(
                     user_id=user_id,
                     enable_tools=True,
                     on_transcript=on_transcript,
                     on_tool_call=on_tool_call,
                     on_tool_call_complete=on_tool_call_complete,
+                    caller_context=caller_context,
                 )
                 _log.info("Connecting to Gemini Live …")
                 await gemini.connect()
@@ -346,8 +384,15 @@ async def media_stream(websocket: WebSocket):
                 receive_task = asyncio.create_task(gemini.receive_loop(bridge))
                 drain_task   = asyncio.create_task(bridge.drain_loop())
 
-                # Kick off Bianca's opening greeting
-                await gemini.send_text(INITIAL_GREETING)
+                # Kick off Bianca's opening greeting — personalized when name is known
+                if caller_first:
+                    greeting_prompt = (
+                        f"Greet {caller_first} warmly as Bianca. "
+                        "Ask how you can help. One sentence only — warm and direct."
+                    )
+                else:
+                    greeting_prompt = INITIAL_GREETING
+                await gemini.send_text(greeting_prompt)
 
             elif event == "media":
                 if bridge is None:

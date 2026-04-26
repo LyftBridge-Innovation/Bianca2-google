@@ -1,7 +1,7 @@
 .message {
   display: flex;
-  margin-bottom: 20px;
-  animation: msgIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  margin-bottom: 22px;
+  animation: fadeInUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .message-user      { justify-content: flex-end; }
@@ -16,58 +16,62 @@
 }
 
 .message-avatar {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: var(--gradient-accent);
   color: #ffffff;
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 400;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   margin-top: 2px;
-  box-shadow: 0 0 12px rgba(41, 108, 172, 0.35);
+  box-shadow: 0 0 14px rgba(41, 108, 172, 0.40);
 }
 
-/* ─── Bubble ─────────────────────────────────────────────────────────────── */
-.message-content {
-  padding: 11px 16px;
-  font-size: 15px;
-  line-height: 1.72;
-  word-wrap: break-word;
-  font-weight: 300;
-}
-
+/* ─── User bubble — solid gradient ──────────────────────────────────────── */
 .message-user .message-content {
   max-width: 72%;
-  background: linear-gradient(
-    135deg,
-    rgba(41, 108, 172, 0.13) 0%,
-    rgba(93, 134, 173, 0.06) 100%
-  );
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(41, 108, 172, 0.28);
+  background: var(--gradient-accent);
   border-radius: 20px 20px 4px 20px;
-  color: var(--text-primary);
+  padding: 12px 18px;
+  color: #ffffff;
+  font-size: 15px;
+  line-height: 1.65;
   font-weight: 400;
   white-space: pre-wrap;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(41, 108, 172, 0.08);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 20px rgba(41, 108, 172, 0.35), 0 1px 4px rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: hidden;
 }
 
-.message-user .message-content:hover {
-  border-color: rgba(41, 108, 172, 0.42);
-  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.3), 0 0 20px rgba(41, 108, 172, 0.08);
+/* Subtle inner shine */
+.message-user .message-content::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.10) 0%, transparent 60%);
+  pointer-events: none;
+  border-radius: inherit;
 }
 
+/* ─── Assistant message — glass card with left bar ───────────────────────── */
 .message-assistant .message-content {
-  background: transparent;
+  background: var(--bg-glass);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px var(--radius-md) var(--radius-md) 4px;
+  padding: 12px 16px;
   color: var(--text-primary);
-  padding-left: 0;
+  font-size: 15px;
+  line-height: 1.72;
+  font-weight: 400;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
 }
 
 /* ─── Markdown inside assistant bubbles ─────────────────────────────────── */
@@ -87,13 +91,19 @@
 }
 .message-assistant .message-content strong {
   font-weight: 600;
+  color: var(--text-primary);
+}
+.message-assistant .message-content a {
+  color: var(--accent-secondary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
-/* Inline code — violet tinted */
+/* Inline code */
 .message-assistant .message-content code {
   background: rgba(41, 108, 172, 0.12);
   border: 1px solid rgba(41, 108, 172, 0.22);
-  color: #5D86AD;
+  color: var(--accent-soft);
   font-family: var(--font-mono);
   font-size: 13px;
   padding: 1px 6px;
@@ -102,7 +112,7 @@
 
 /* Code block */
 .message-assistant .message-content pre {
-  background: rgba(11, 11, 24, 0.80);
+  background: rgba(10, 13, 18, 0.85);
   backdrop-filter: blur(10px);
   border: 1px solid var(--border-muted);
   border-left: 3px solid var(--accent);
@@ -120,22 +130,10 @@
   padding: 0;
 }
 
-/* ─── Entry animation ────────────────────────────────────────────────────── */
-@keyframes msgIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.99);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
 /* ─── Streaming cursor ───────────────────────────────────────────────────── */
 .typing-cursor {
   display: inline-block;
-  margin-left: 1px;
+  margin-left: 2px;
   width: 2px;
   height: 1em;
   background: var(--accent);

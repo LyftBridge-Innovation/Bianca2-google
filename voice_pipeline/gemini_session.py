@@ -9,15 +9,30 @@ What changed from the original:
 - close() / disconnect() are both available (same thing)
 """
 import asyncio
+import json
 import os
+from pathlib import Path
 from typing import Optional, Callable
 from google import genai
 from google.genai import types
 
 from voice_config import GEMINI_API_KEY, MODEL, VERTEX_MODEL, DEBUG_LOGGING, DEFAULT_USER_ID
-from voice_prompts import SYSTEM_INSTRUCTION
+from voice_prompts import get_voice_system_instruction, INITIAL_GREETING
 from tool_declarations import build_tools_config
 from tool_dispatcher import ToolDispatcher
+
+# Settings file lives in the backend directory alongside the voice pipeline
+_SETTINGS_PATH = Path(__file__).parent.parent / "backend" / "knowledge" / "settings.json"
+
+
+def _load_voice_settings() -> dict:
+    """Load backend settings.json for voice-relevant keys (voice_prompt, voice_greeting)."""
+    try:
+        if _SETTINGS_PATH.exists():
+            return json.loads(_SETTINGS_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return {}
 
 
 class GeminiSession:
@@ -38,15 +53,18 @@ class GeminiSession:
         on_transcript: Optional[Callable] = None,
         on_tool_call: Optional[Callable] = None,
         on_tool_call_complete: Optional[Callable] = None,
+        caller_context: str = "",
     ):
         """
         Args:
-            user_id:       User whose Gmail/Calendar credentials are used.
-            enable_tools:  If False, starts with no tools (useful for raw audio tests).
-            api_key:       Override GEMINI_API_KEY from env.
-            on_transcript: Optional async callback(role: str, text: str) for 5B/5C.
-            on_tool_call:  Optional async callback(tool_name: str) for 5B UI panel.
-            on_tool_call_complete: Optional async callback(tool_name: str, parameters: dict, result: str) for 5C Firestore logging.
+            user_id:         User whose Gmail/Calendar credentials are used.
+            enable_tools:    If False, starts with no tools (useful for raw audio tests).
+            api_key:         Override GEMINI_API_KEY from env.
+            on_transcript:   Optional async callback(role: str, text: str) for 5B/5C.
+            on_tool_call:    Optional async callback(tool_name: str) for 5B UI panel.
+            on_tool_call_complete: Optional async callback(tool_name, parameters, result) for 5C Firestore logging.
+            caller_context:  Optional one-line string with caller identity (name, email) injected
+                             into the system instruction so Bianca knows who is calling.
         """
         self.user_id = user_id
         self.api_key = api_key or GEMINI_API_KEY
@@ -63,10 +81,25 @@ class GeminiSession:
         # Tool dispatcher bound to user_id
         self.dispatcher = ToolDispatcher(user_id, on_tool_call_complete) if enable_tools else None
 
+        # Load voice_prompt and voice_greeting from backend settings.json
+        _settings = _load_voice_settings()
+        _voice_prompt = _settings.get("voice_prompt", "")
+        _voice_greeting = _settings.get("voice_greeting", "")
+
+        # Build system instruction dynamically from settings
+        system_instruction = get_voice_system_instruction(
+            voice_prompt=_voice_prompt,
+            voice_greeting=_voice_greeting,
+        )
+
+        # Append caller identity to system instruction when provided
+        if caller_context:
+            system_instruction = f"{system_instruction}\n\n{caller_context}"
+
         # Session config — tools are declared at connect time, not added dynamically
         self._config = {
             "response_modalities": ["AUDIO"],
-            "system_instruction": SYSTEM_INSTRUCTION,
+            "system_instruction": system_instruction,
         }
         if enable_tools:
             self._config["tools"] = build_tools_config(enable_google_search=True)

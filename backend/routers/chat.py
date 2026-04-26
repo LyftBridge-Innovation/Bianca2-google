@@ -100,6 +100,30 @@ def _try_enqueue_background(tool_name: str, tool_args: dict, user_id: str, sessi
     )
     return True, result_str
 
+def _load_user_prompt_context(user_id: str) -> dict:
+    """
+    Load world model entries and access control (authorizations + constraints)
+    for a user from Firestore. Failures are silenced — returns empty lists.
+    """
+    result = {"world_model": [], "authorizations": [], "constraints": []}
+    try:
+        from firestore_client import get_firestore_client
+        db = get_firestore_client()
+        user_ref = db.collection("users").document(user_id)
+
+        wm_docs = user_ref.collection("world_model").stream()
+        result["world_model"] = [d.to_dict() for d in wm_docs]
+
+        ac_doc = user_ref.collection("access_control").document("config").get()
+        if ac_doc.exists:
+            ac = ac_doc.to_dict()
+            result["authorizations"] = ac.get("authorizations", [])
+            result["constraints"] = ac.get("constraints", [])
+    except Exception:
+        pass
+    return result
+
+
 # LLM cache — recreated when model/temperature settings change
 _llm_cache: dict = {"model": None, "temperature": None, "api_key": None, "instance": None}
 
@@ -119,22 +143,27 @@ def _get_llm():
     model: str = settings.get("model", "gemini-2.5-flash")
     temperature: float = settings.get("temperature", 0.7)
 
+    # Resolve Google API key: settings override → env var
+    google_key: str = (
+        settings.get("google_api_key", "").strip()
+        or os.getenv("GOOGLE_API_KEY", "")
+    )
+
     # Resolve Anthropic key: settings override → env var
     anthropic_key: str = (
         settings.get("anthropic_api_key", "").strip()
         or os.getenv("ANTHROPIC_API_KEY", "")
     )
 
-    cache_key = (model, temperature, anthropic_key)
     if (
         _llm_cache["instance"] is None
         or _llm_cache["model"] != model
         or _llm_cache["temperature"] != temperature
-        or _llm_cache["api_key"] != anthropic_key
+        or _llm_cache["api_key"] != (google_key or anthropic_key)
     ):
         _llm_cache["model"] = model
         _llm_cache["temperature"] = temperature
-        _llm_cache["api_key"] = anthropic_key
+        _llm_cache["api_key"] = google_key or anthropic_key
 
         if model.startswith("claude"):
             from langchain_anthropic import ChatAnthropic
@@ -150,7 +179,18 @@ def _get_llm():
                 max_retries=4,
             ).bind_tools(ALL_TOOLS)
             _chat_logger.info("LLM: Anthropic %s", model)
+        elif google_key:
+            # Direct AI Studio key provided — use Google GenAI (non-Vertex) client
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            _llm_cache["instance"] = ChatGoogleGenerativeAI(
+                model=model,
+                temperature=temperature,
+                google_api_key=google_key,
+                max_retries=6,
+            ).bind_tools(ALL_TOOLS)
+            _chat_logger.info("LLM: Google GenAI (AI Studio) %s", model)
         else:
+            # No explicit key — fall back to Vertex AI with Application Default Credentials
             _llm_cache["instance"] = ChatVertexAI(
                 model=model,
                 project=GCP_PROJECT_ID,
@@ -225,8 +265,15 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
         user_message = Message(role="user", content=request.message)
         fs.append_message(session.session_id, user_message)
         
+        # Load user-specific context (world model + access control)
+        user_ctx = _load_user_prompt_context(request.user_id)
+
         # Build message chain with system prompt and session history
-        messages = [SystemMessage(content=get_system_prompt())]
+        messages = [SystemMessage(content=get_system_prompt(
+            world_model=user_ctx["world_model"],
+            authorizations=user_ctx["authorizations"],
+            constraints=user_ctx["constraints"],
+        ))]
         
         # Add recent messages from session history (capped to avoid token limits)
         for msg in session.messages[-MAX_HISTORY_MESSAGES:]:
@@ -252,7 +299,11 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
             )
             
             # Update system message (first message in chain)
-            original_system_prompt = get_system_prompt()
+            original_system_prompt = get_system_prompt(
+                world_model=user_ctx["world_model"],
+                authorizations=user_ctx["authorizations"],
+                constraints=user_ctx["constraints"],
+            )
             enriched_system_prompt = f"{original_system_prompt}\n\n{memory_block}"
             messages[0] = SystemMessage(content=enriched_system_prompt)
             
@@ -496,8 +547,15 @@ async def stream_chat_response(request: ChatRequest, background_tasks: Backgroun
             return
         # ─────────────────────────────────────────────────────────────────────
 
+        # Load user-specific context (world model + access control)
+        user_ctx = _load_user_prompt_context(request.user_id)
+
         # Build message chain
-        messages = [SystemMessage(content=get_system_prompt())]
+        messages = [SystemMessage(content=get_system_prompt(
+            world_model=user_ctx["world_model"],
+            authorizations=user_ctx["authorizations"],
+            constraints=user_ctx["constraints"],
+        ))]
         
         # Add recent messages from session history (capped to avoid token limits)
         for msg in session.messages[-MAX_HISTORY_MESSAGES:]:
@@ -519,7 +577,11 @@ async def stream_chat_response(request: ChatRequest, background_tasks: Backgroun
                 event_memories=memory_data["event_memories"],
                 entity_memories=memory_data["entity_memories"]
             )
-            original_system_prompt = get_system_prompt()
+            original_system_prompt = get_system_prompt(
+                world_model=user_ctx["world_model"],
+                authorizations=user_ctx["authorizations"],
+                constraints=user_ctx["constraints"],
+            )
             enriched_system_prompt = f"{original_system_prompt}\n\n{memory_block}"
             messages[0] = SystemMessage(content=enriched_system_prompt)
             logger.info(f"Injected {memory_data['total_count']} memories")

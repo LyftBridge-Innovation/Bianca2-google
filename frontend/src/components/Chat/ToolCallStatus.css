@@ -2,62 +2,54 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 16px 8px 12px;
+  padding: 8px 16px 8px 10px;
   background: var(--bg-glass);
-  backdrop-filter: var(--glass-backdrop);
-  -webkit-backdrop-filter: var(--glass-backdrop);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid rgba(41, 108, 172, 0.22);
   border-radius: var(--radius-pill);
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-style: normal;
-  letter-spacing: 0.02em;
   box-shadow:
     0 4px 16px rgba(0, 0, 0, 0.2),
-    0 0 24px rgba(41, 108, 172, 0.08);
-  animation: toolPillIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both,
-             breatheGlow 2.8s ease-in-out infinite;
+    0 0 24px rgba(41, 108, 172, 0.07);
+  animation: fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both,
+             toolGlow 2.8s ease-in-out infinite;
 }
 
-/* ─── Pulsing indicator dot ──────────────────────────────────────────────── */
+/* Gradient icon container */
+.tool-call-icon-wrap {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background: var(--gradient-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(41, 108, 172, 0.35);
+}
+
+/* ─── Pulsing dot ────────────────────────────────────────────────────────── */
 .tool-call-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--accent);
   flex-shrink: 0;
-  box-shadow: 0 0 8px rgba(41, 108, 172, 0.6);
-  animation: dotBreath 1.4s ease-in-out infinite;
-}
-
-/* ─── Spinner icon ───────────────────────────────────────────────────────── */
-.tool-call-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--accent);
-  opacity: 0.8;
+  box-shadow: 0 0 8px rgba(41, 108, 172, 0.65);
+  animation: pulse 1.4s ease-in-out infinite;
 }
 
 .tool-call-label {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   color: var(--text-secondary);
+  text-transform: lowercase;
 }
 
 /* ─── Animations ─────────────────────────────────────────────────────────── */
-@keyframes dotBreath {
-  0%, 100% {
-    opacity: 0.4;
-    transform: scale(0.85);
-    box-shadow: 0 0 5px rgba(41, 108, 172, 0.4);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.15);
-    box-shadow: 0 0 12px rgba(41, 108, 172, 0.75);
-  }
-}
-
-@keyframes breatheGlow {
+@keyframes toolGlow {
   0%, 100% {
     box-shadow:
       0 4px 16px rgba(0, 0, 0, 0.2),
@@ -68,17 +60,6 @@
     box-shadow:
       0 4px 20px rgba(0, 0, 0, 0.25),
       0 0 32px rgba(41, 108, 172, 0.14);
-    border-color: rgba(41, 108, 172, 0.36);
-  }
-}
-
-@keyframes toolPillIn {
-  from {
-    opacity: 0;
-    transform: translateY(6px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
+    border-color: rgba(41, 108, 172, 0.38);
   }
 }
