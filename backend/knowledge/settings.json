@@ -8,5 +8,6 @@
   "secondary_language": "",
   "custom_prompt": "",
   "google_api_key": "",
-  "anthropic_api_key": ""
+  "anthropic_api_key": "",
+  "perplexity_api_key": ""
 }

@@ -89,6 +89,7 @@ const WORLD_MODEL_CATEGORIES = [
 const SECURITY_KEYS = [
   { key: 'google_api_key', label: 'Google / Gemini API Key' },
   { key: 'anthropic_api_key', label: 'Anthropic API Key' },
+  { key: 'perplexity_api_key', label: 'Perplexity API Key' },
   { key: 'google_workspace_token', label: 'Google Workspace Token' },
   { key: 'twilio', label: 'Twilio (Voice/SMS)' },
 ];
@@ -1659,6 +1660,34 @@ export function NeuralConfig({ onGoToChat }) {
                 </div>
                 <div className="nc-integration-desc">Template for branded spreadsheets.</div>
                 <input className="nc-template-input" placeholder="Paste Sheets URL or template ID" value={settings.sheets_template_id || ''} onChange={(e) => updateSetting('sheets_template_id', e.target.value)} />
+              </div>
+
+              {/* Perplexity AI */}
+              <div className="nc-integration-card">
+                <div className="nc-integration-header">
+                  <div className="nc-integration-icon">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                      <circle cx="9" cy="9" r="7" stroke="currentColor" strokeWidth="1.3"/>
+                      <path d="M6 9h6M9 6l3 3-3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <span className="nc-integration-title">Perplexity AI</span>
+                  {settings.perplexity_api_key && <span className="nc-status-badge configured">Configured</span>}
+                </div>
+                <div className="nc-integration-desc">
+                  Enables real-time web search and deep research reports. Once configured, Bianca can answer questions about current events, recent news, and conduct in-depth research.
+                </div>
+                <div className="nc-model-apikey">
+                  <label className="nc-form-label">Perplexity API Key</label>
+                  <input
+                    className="nc-form-input nc-apikey-input"
+                    type="password"
+                    placeholder="pplx-… (get yours at perplexity.ai/settings/api)"
+                    value={settings.perplexity_api_key || ''}
+                    onChange={(e) => updateSetting('perplexity_api_key', e.target.value)}
+                  />
+                  <div className="nc-subsection-hint">Enables <code>perplexity_search</code> (sonar) and <code>perplexity_deep_research</code> (sonar-deep-research) tools in chat.</div>
+                </div>
               </div>
 
               {settingsDirty && (

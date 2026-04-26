@@ -5,6 +5,9 @@
 # Reference / scratch directories — never commit
 reference/
 
+# Settings file may contain API keys — never commit
+backend/knowledge/settings.json
+
 # Google OAuth credentials — never commit these
 credentials.json
 client_secret*.json

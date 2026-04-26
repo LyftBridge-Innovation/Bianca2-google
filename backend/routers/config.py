@@ -291,6 +291,10 @@ def get_security_status():
             settings.get("anthropic_api_key", "").strip()
             or os.getenv("ANTHROPIC_API_KEY", "")
         ),
+        "perplexity_api_key": bool(
+            settings.get("perplexity_api_key", "").strip()
+            or os.getenv("PERPLEXITY_API_KEY", "")
+        ),
         "google_workspace_token": bool(os.getenv("GOOGLE_WORKSPACE_CLI_TOKEN", "")),
         "twilio": bool(
             os.getenv("TWILIO_ACCOUNT_SID", "")
