@@ -1,7 +1,7 @@
 .sidebar {
   width: 256px;
   height: 100vh;
-  background: linear-gradient(180deg, #0c0c1c 0%, #09091a 100%);
+  background: var(--bg-surface);
   border-right: none;
   display: flex;
   flex-direction: column;
@@ -9,7 +9,7 @@
   position: relative;
 }
 
-/* Gradient right border — violet top → gold bottom */
+/* Gradient right border */
 .sidebar::after {
   content: '';
   position: absolute;
@@ -19,58 +19,62 @@
   height: 100%;
   background: linear-gradient(
     180deg,
-    rgba(41, 108, 172, 0.30) 0%,
+    rgba(41, 108, 172, 0.35) 0%,
     rgba(41, 108, 172, 0.12) 20%,
     rgba(255, 255, 255, 0.04) 50%,
     rgba(93, 134, 173, 0.12) 85%,
-    rgba(93, 134, 173, 0.22) 100%
+    rgba(93, 134, 173, 0.25) 100%
   );
   pointer-events: none;
 }
 
 /* ─── Header ─────────────────────────────────────────────────────────────── */
 .sidebar-header {
-  padding: 28px 16px 18px;
+  padding: 24px 16px 16px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .sidebar-logo {
   font-family: var(--font-display);
-  font-size: 28px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  margin: 0 0 18px 4px;
-  background: var(--gradient-text-gold);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 16px 2px;
+  background: var(--gradient-text);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  filter: drop-shadow(0 0 16px rgba(93, 134, 173, 0.18));
-  text-rendering: optimizeLegibility;
+  line-height: 1.1;
 }
 
+/* ─── New Chat button — gradient pill ────────────────────────────────────── */
 .sidebar-new-chat {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 7px;
   width: 100%;
   padding: 9px 16px;
-  background: transparent;
-  border: 1px solid var(--border-muted);
+  background: var(--gradient-accent);
+  border: none;
   border-radius: var(--radius-md);
-  color: var(--text-secondary);
+  color: #ffffff;
   font-size: 13px;
-  font-weight: 400;
+  font-weight: 500;
   letter-spacing: 0.02em;
-  transition: border-color var(--transition-base), color var(--transition-base),
-              background var(--transition-base), box-shadow var(--transition-base);
+  box-shadow: 0 2px 12px rgba(41, 108, 172, 0.30);
+  transition: transform var(--transition-base), box-shadow var(--transition-base),
+              filter var(--transition-base);
 }
 
 .sidebar-new-chat:hover {
-  border-color: rgba(41, 108, 172, 0.45);
-  color: var(--accent);
-  background: rgba(41, 108, 172, 0.08);
-  box-shadow: 0 0 20px rgba(41, 108, 172, 0.08), inset 0 0 10px rgba(41, 108, 172, 0.04);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(41, 108, 172, 0.40);
+  filter: brightness(1.08);
+}
+
+.sidebar-new-chat:active {
+  transform: scale(0.98);
 }
 
 /* ─── Sessions list ──────────────────────────────────────────────────────── */
@@ -81,15 +85,17 @@
 }
 
 .sidebar-group {
-  margin-bottom: 24px;
+  margin-bottom: 22px;
 }
 
+/* Monospace uppercase group title */
 .sidebar-group-title {
-  font-size: 10px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
   font-weight: 500;
-  color: rgba(120, 120, 160, 0.6);
+  color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.13em;
   padding: 4px 12px 8px;
 }
 
@@ -112,7 +118,7 @@
   background: var(--gradient-active);
 }
 
-/* Violet→blue gradient accent bar on active session */
+/* Accent bar on active session */
 .sidebar-session.active::before {
   content: '';
   position: absolute;
@@ -120,7 +126,7 @@
   top: 18%;
   height: 64%;
   width: 3px;
-  background: linear-gradient(180deg, #296CAC 0%, #5D86AD 100%);
+  background: var(--gradient-accent);
   border-radius: 0 2px 2px 0;
   box-shadow: 0 0 8px rgba(41, 108, 172, 0.5);
 }
@@ -131,7 +137,7 @@
   background: transparent;
   border: none;
   color: var(--text-secondary);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 400;
   text-align: left;
   cursor: pointer;
@@ -142,10 +148,6 @@
 .sidebar-session:hover .sidebar-session-button,
 .sidebar-session.active .sidebar-session-button {
   color: var(--text-primary);
-}
-
-.sidebar-session.active .sidebar-session-button {
-  text-shadow: 0 0 16px rgba(41, 108, 172, 0.25);
 }
 
 .sidebar-session-title {
@@ -192,13 +194,12 @@
 .sidebar-sessions::-webkit-scrollbar-thumb { background: rgba(41, 108, 172, 0.25); border-radius: 2px; }
 .sidebar-sessions::-webkit-scrollbar-thumb:hover { background: rgba(41, 108, 172, 0.4); }
 
-/* ─── Footer — config button ────────────────────────────────────────────── */
+/* ─── Footer — nav buttons ───────────────────────────────────────────────── */
 .sidebar-footer {
   padding: 12px 12px 8px;
   border-top: 1px solid var(--border-subtle);
 }
 
-/* ─── Lyftbridge branding strip ─────────────────────────────────────────── */
 .sidebar-brand-footer {
   padding: 8px 12px 14px;
   border-top: none;
@@ -207,12 +208,12 @@
 
 .sidebar-brand-footer .lb-footer__logo {
   height: 13px;
-  opacity: 0.4;
+  opacity: 0.35;
 }
 
 .sidebar-brand-footer .lb-footer__copy {
   font-size: 10px;
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 .sidebar-config-btn {
@@ -226,6 +227,7 @@
   border-radius: var(--radius-md);
   color: var(--text-secondary);
   font-size: 13px;
+  font-weight: 400;
   cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast);
 }
@@ -240,20 +242,27 @@
   color: var(--accent);
 }
 
+/* Avatar */
 .sidebar-config-avatar {
   width: 28px;
   height: 28px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1.5px solid rgba(41, 108, 172, 0.25);
+  border: 1.5px solid rgba(41, 108, 172, 0.28);
   flex-shrink: 0;
+  transition: border-color var(--transition-fast);
+}
+
+.sidebar-config-btn.active .sidebar-config-avatar,
+.sidebar-config-btn:hover .sidebar-config-avatar {
+  border-color: rgba(41, 108, 172, 0.55);
 }
 
 .sidebar-config-avatar-fallback {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--accent), #5D86AD);
+  background: var(--gradient-accent);
   color: #fff;
   font-size: 12px;
   font-weight: 600;
@@ -265,21 +274,24 @@
   white-space: nowrap;
 }
 
+/* Marketplace icon circle */
 .sidebar-marketplace-icon {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 1.5px solid rgba(41, 108, 172, 0.25);
+  border: 1.5px solid rgba(41, 108, 172, 0.22);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   color: var(--text-secondary);
-  transition: color var(--transition-fast);
+  transition: color var(--transition-fast), border-color var(--transition-fast),
+              background var(--transition-fast);
 }
 
 .sidebar-config-btn.active .sidebar-marketplace-icon,
 .sidebar-config-btn:hover .sidebar-marketplace-icon {
   color: var(--accent);
   border-color: rgba(41, 108, 172, 0.50);
+  background: rgba(41, 108, 172, 0.08);
 }

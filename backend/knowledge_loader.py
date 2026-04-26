@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 _KNOWLEDGE_DIR = Path(__file__).parent / "knowledge"
 _EDUCATION_PATH = _KNOWLEDGE_DIR / "education.json"
+_RESUME_PATH = _KNOWLEDGE_DIR / "resume.json"
 
 _SECTIONS = [
     ("01_persona",  "Persona & Identity"),
@@ -101,6 +102,42 @@ def _load_education_block() -> str:
     return "\n".join(parts)
 
 
+def _load_resume_block() -> str:
+    """Load configured work experience and format as Bianca's professional background."""
+    if not _RESUME_PATH.exists():
+        return ""
+
+    try:
+        data = json.loads(_RESUME_PATH.read_text(encoding="utf-8"))
+    except Exception as exc:
+        logger.error(f"[KnowledgeLoader] Could not read resume.json: {exc}")
+        return ""
+
+    experience = data.get("experience", [])
+    if not experience:
+        return ""
+
+    parts = ["--- YOUR PROFESSIONAL EXPERIENCE ---"]
+    parts.append("This is YOUR work history. When asked about your background, speak in first person.")
+
+    for e in experience:
+        title = e.get("title", "Role")
+        org = e.get("organization", "")
+        start = e.get("startDate", "")
+        end = e.get("endDate", "") or "Present"
+        desc = e.get("description", "")
+        line = f"- {title}"
+        if org:
+            line += f" at {org}"
+        if start:
+            line += f" ({start} – {end})"
+        if desc:
+            line += f": {desc}"
+        parts.append(line)
+
+    return "\n".join(parts)
+
+
 def build_knowledge_block() -> str:
     """
     Assemble and return the full knowledge block for the system prompt.
@@ -117,6 +154,11 @@ def build_knowledge_block() -> str:
     education_block = _load_education_block()
     if education_block:
         sections.append(education_block)
+
+    # Add user-configured work experience
+    resume_block = _load_resume_block()
+    if resume_block:
+        sections.append(resume_block)
 
     if not sections:
         logger.warning("[KnowledgeLoader] No knowledge files found — skipping knowledge block.")

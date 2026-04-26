@@ -90,13 +90,36 @@ instructs you to send."""
 # Public API
 # ---------------------------------------------------------------------------
 
-def get_system_prompt() -> str:
+def _build_template_hints(settings: dict) -> str:
+    """Return a capabilities note listing configured document template IDs, or empty string."""
+    lines = []
+    if settings.get("docs_template_id", "").strip():
+        lines.append(f"- When creating Google Docs, use template ID: {settings['docs_template_id'].strip()}")
+    if settings.get("slides_template_id", "").strip():
+        lines.append(f"- When creating Google Slides, use template ID: {settings['slides_template_id'].strip()}")
+    if settings.get("sheets_template_id", "").strip():
+        lines.append(f"- When creating Google Sheets, use template ID: {settings['sheets_template_id'].strip()}")
+    if not lines:
+        return ""
+    return "=== DOCUMENT TEMPLATE IDS ===\n" + "\n".join(lines)
+
+
+def get_system_prompt(
+    world_model: list | None = None,
+    authorizations: list | None = None,
+    constraints: list | None = None,
+) -> str:
     """
     Assemble and return the full system prompt for a chat session.
 
     Called once per request. The identity block is generated fresh each call
     so the date/time is always accurate. Knowledge and values are fast
     (small text files + in-memory constants).
+
+    Args:
+        world_model:     List of world-model entries {category, title, content} to inject.
+        authorizations:  List of authorization strings from Access Control tab.
+        constraints:     List of constraint strings from Access Control tab.
     """
     settings = load_settings()
     custom_prompt = settings.get("custom_prompt", "").strip()
@@ -108,6 +131,16 @@ def get_system_prompt() -> str:
         _CAPABILITIES_BLOCK,
     ]
 
+    template_hints = _build_template_hints(settings)
+    if template_hints:
+        blocks.append(template_hints)
+
+    if world_model:
+        blocks.append(_build_world_model_block(world_model))
+
+    if authorizations or constraints:
+        blocks.append(_build_access_control_block(authorizations or [], constraints or []))
+
     # Drop any empty blocks (e.g. if knowledge files are missing)
     assembled = "\n\n".join(block for block in blocks if block.strip())
 
@@ -116,3 +149,38 @@ def get_system_prompt() -> str:
         assembled = f"{custom_prompt}\n\n{assembled}"
 
     return assembled
+
+
+def _build_world_model_block(entries: list) -> str:
+    """Format world model entries as a context block for the system prompt."""
+    if not entries:
+        return ""
+    lines = ["=== WORLD CONTEXT ==="]
+    from itertools import groupby
+    sorted_entries = sorted(entries, key=lambda e: e.get("category", ""))
+    for category, group in groupby(sorted_entries, key=lambda e: e.get("category", "general")):
+        lines.append(f"\n[{category.upper()}]")
+        for entry in group:
+            if not entry.get("enabled", True):
+                continue
+            title = entry.get("title", "")
+            content = entry.get("content", "")
+            if title and content:
+                lines.append(f"- {title}: {content}")
+            elif title:
+                lines.append(f"- {title}")
+    return "\n".join(lines)
+
+
+def _build_access_control_block(authorizations: list, constraints: list) -> str:
+    """Format access control rules as a behavioral block for the system prompt."""
+    lines = ["=== ACCESS CONTROL ==="]
+    if authorizations:
+        lines.append("\nExplicitly permitted actions:")
+        for a in authorizations:
+            lines.append(f"- {a}")
+    if constraints:
+        lines.append("\nHard constraints — never violate these:")
+        for c in constraints:
+            lines.append(f"- {c}")
+    return "\n".join(lines)

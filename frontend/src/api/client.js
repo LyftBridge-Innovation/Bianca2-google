@@ -317,4 +317,87 @@ export async function savePhoneNumber(userId, phoneNumber) {
   });
 }
 
+// ── Resume API ───────────────────────────────────────────────────────────────
+
+/** Get security key status (boolean presence flags, no values). */
+export async function getSecurityStatus() {
+  return apiRequest('/config/security-status');
+}
+
+/** Get resume data (work experience). */
+export async function getResume() {
+  return apiRequest('/config/resume');
+}
+
+/** Save resume data (work experience). */
+export async function saveResume(experience) {
+  return apiRequest('/config/resume', {
+    method: 'PUT',
+    body: JSON.stringify({ experience }),
+  });
+}
+
+// ── User Data API (contacts, world model, access control) ────────────────────
+
+/** List all contacts for a user. */
+export async function getContacts(userId) {
+  return apiRequest(`/user-data/contacts?user_id=${encodeURIComponent(userId)}`);
+}
+
+/** Add a contact for a user. */
+export async function addContact(userId, contact) {
+  return apiRequest('/user-data/contacts', {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId, ...contact }),
+  });
+}
+
+/** Delete a contact by ID. */
+export async function deleteContact(userId, contactId) {
+  return apiRequest(`/user-data/contacts/${contactId}?user_id=${encodeURIComponent(userId)}`, {
+    method: 'DELETE',
+  });
+}
+
+/** List all world model entries for a user. */
+export async function getWorldModel(userId) {
+  return apiRequest(`/user-data/world-model?user_id=${encodeURIComponent(userId)}`);
+}
+
+/** Add a world model entry for a user. */
+export async function addWorldModelEntry(userId, entry) {
+  return apiRequest('/user-data/world-model', {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId, ...entry }),
+  });
+}
+
+/** Delete a world model entry by ID. */
+export async function deleteWorldModelEntry(userId, entryId) {
+  return apiRequest(`/user-data/world-model/${entryId}?user_id=${encodeURIComponent(userId)}`, {
+    method: 'DELETE',
+  });
+}
+
+/** Toggle enabled flag on a world model entry. */
+export async function toggleWorldModelEntry(userId, entryId, enabled) {
+  return apiRequest(
+    `/user-data/world-model/${entryId}?user_id=${encodeURIComponent(userId)}&enabled=${enabled}`,
+    { method: 'PATCH' }
+  );
+}
+
+/** Get access control (authorizations + constraints) for a user. */
+export async function getAccessControl(userId) {
+  return apiRequest(`/user-data/access-control?user_id=${encodeURIComponent(userId)}`);
+}
+
+/** Save the full access control config for a user. */
+export async function saveAccessControl(userId, authorizations, constraints) {
+  return apiRequest('/user-data/access-control', {
+    method: 'PUT',
+    body: JSON.stringify({ user_id: userId, authorizations, constraints }),
+  });
+}
+
 export { API_BASE_URL };

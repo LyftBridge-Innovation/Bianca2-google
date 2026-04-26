@@ -62,14 +62,33 @@ You have access to the following tools — use them whenever relevant:
 When asked to create a document, presentation, spreadsheet, or PDF, call the appropriate tool immediately with a title and a clear description of what it should contain.\
 """
 
-# Assembled at import time — date is baked in since voice sessions are short-lived
-SYSTEM_INSTRUCTION = "\n\n".join([
-    _IDENTITY,
-    _SPEECH_RULES,
-    _VALUES,
-    _CAPABILITIES,
-    f"Today is {_current_date_str()}. Use this for all scheduling and time references.",
-])
+
+def get_voice_system_instruction(voice_prompt: str = "", voice_greeting: str = "") -> str:
+    """
+    Build the full voice system instruction dynamically.
+
+    Args:
+        voice_prompt:   Optional extra instructions from Neural Config → Integrations tab.
+                        Prepended before the standard identity block.
+        voice_greeting: Not used in the system instruction itself; consumed by the
+                        caller to override INITIAL_GREETING when set.
+    """
+    blocks = [
+        _IDENTITY,
+        _SPEECH_RULES,
+        _VALUES,
+        _CAPABILITIES,
+        f"Today is {_current_date_str()}. Use this for all scheduling and time references.",
+    ]
+    instruction = "\n\n".join(blocks)
+    if voice_prompt:
+        instruction = f"{voice_prompt}\n\n{instruction}"
+    return instruction
+
+
+# Backward-compatible constant — used by tests and any callers that haven't
+# been updated to call get_voice_system_instruction() yet.
+SYSTEM_INSTRUCTION = get_voice_system_instruction()
 
 INITIAL_GREETING = (
     "Greet the user as Bianca. Use their first name if you know it. "

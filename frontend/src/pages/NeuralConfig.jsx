@@ -24,6 +24,18 @@ import {
   disableEmailAgent,
   getPhoneNumber,
   savePhoneNumber,
+  getSecurityStatus,
+  getResume,
+  saveResume,
+  getContacts,
+  addContact,
+  deleteContact,
+  getWorldModel,
+  addWorldModelEntry,
+  deleteWorldModelEntry,
+  toggleWorldModelEntry,
+  getAccessControl,
+  saveAccessControl,
   API_BASE_URL,
 } from '../api/client';
 import './NeuralConfig.css';
@@ -31,12 +43,11 @@ import './NeuralConfig.css';
 const LOGO = import.meta.env.BASE_URL + 'lyftbridge.jpeg';
 
 const VOICE_OPTIONS = [
-  { id: 'shimmer', label: 'Shimmer', desc: 'Warm female' },
-  { id: 'nova', label: 'Nova', desc: 'Bright female' },
-  { id: 'alloy', label: 'Alloy', desc: 'Balanced neutral' },
-  { id: 'echo', label: 'Echo', desc: 'Clear male' },
-  { id: 'fable', label: 'Fable', desc: 'Expressive' },
-  { id: 'onyx', label: 'Onyx', desc: 'Deep male' },
+  { id: 'Aoede', label: 'Aoede', desc: 'Warm female' },
+  { id: 'Kore', label: 'Kore', desc: 'Bright female' },
+  { id: 'Puck', label: 'Puck', desc: 'Expressive neutral' },
+  { id: 'Charon', label: 'Charon', desc: 'Deep male' },
+  { id: 'Fenrir', label: 'Fenrir', desc: 'Clear male' },
 ];
 
 const MODEL_GROUPS = [
@@ -45,7 +56,7 @@ const MODEL_GROUPS = [
     color: '#c96442',
     models: [
       { id: 'claude-sonnet-4-6',          label: 'Claude Sonnet 4.6',  desc: 'Latest — most capable' },
-      { id: 'claude-sonnet-4-5-20250929', label: 'Claude Sonnet 4.5',  desc: 'Default — best balance' },
+      { id: 'claude-sonnet-4-5-20250929', label: 'Claude Sonnet 4.5',  desc: 'Best balance' },
       { id: 'claude-opus-4-6',            label: 'Claude Opus 4.6',    desc: 'Most powerful' },
       { id: 'claude-haiku-4-5-20251001',  label: 'Claude Haiku 4.5',   desc: 'Fast & cheap' },
     ],
@@ -54,7 +65,7 @@ const MODEL_GROUPS = [
     provider: 'Google Gemini',
     color: '#4dc8f5',
     models: [
-      { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', desc: 'Default — fast & efficient' },
+      { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', desc: 'Fast & efficient' },
       { id: 'gemini-2.5-pro',   label: 'Gemini 2.5 Pro',   desc: 'Most capable Gemini' },
     ],
   },
@@ -76,9 +87,9 @@ const WORLD_MODEL_CATEGORIES = [
 ];
 
 const SECURITY_KEYS = [
-  { key: 'gemini_api', label: 'Gemini API Key' },
-  { key: 'google_oauth', label: 'Google OAuth' },
-  { key: 'firebase', label: 'Firebase' },
+  { key: 'google_api_key', label: 'Google / Gemini API Key' },
+  { key: 'anthropic_api_key', label: 'Anthropic API Key' },
+  { key: 'google_workspace_token', label: 'Google Workspace Token' },
   { key: 'twilio', label: 'Twilio (Voice/SMS)' },
 ];
 
@@ -114,9 +125,10 @@ export function NeuralConfig({ onGoToChat }) {
   const [showDegreeForm, setShowDegreeForm] = useState(false);
   const [showCourseForm, setShowCourseForm] = useState(false);
 
-  // ── Persona / Resume sub-tab (local state) ─────────────────────────────────
+  // ── Persona / Resume sub-tab ───────────────────────────────────────────────
   const [experience, setExperience] = useState([]);
   const [showExpForm, setShowExpForm] = useState(false);
+  const [resumeLoaded, setResumeLoaded] = useState(false);
 
   // ── Values tab ─────────────────────────────────────────────────────────────
   const [values, setValues] = useState(null);
@@ -129,21 +141,24 @@ export function NeuralConfig({ onGoToChat }) {
   const [promptPreview, setPromptPreview] = useState(null);
   const [promptLoading, setPromptLoading] = useState(false);
 
-  // ── World Model tab (local state) ──────────────────────────────────────────
+  // ── World Model tab ────────────────────────────────────────────────────────
   const [worldModelCat, setWorldModelCat] = useState('industry');
   const [worldModelEntries, setWorldModelEntries] = useState([]);
   const [showWMForm, setShowWMForm] = useState(false);
+  const [worldModelLoaded, setWorldModelLoaded] = useState(false);
 
-  // ── Contacts tab (local state) ─────────────────────────────────────────────
+  // ── Contacts tab ───────────────────────────────────────────────────────────
   const [contacts, setContacts] = useState([]);
   const [contactSearch, setContactSearch] = useState('');
   const [showContactForm, setShowContactForm] = useState(false);
+  const [contactsLoaded, setContactsLoaded] = useState(false);
 
-  // ── Access Control tab (local state) ───────────────────────────────────────
+  // ── Access Control tab ─────────────────────────────────────────────────────
   const [authorizations, setAuthorizations] = useState([]);
   const [constraints, setConstraints] = useState([]);
   const [authInput, setAuthInput] = useState('');
   const [constraintInput, setConstraintInput] = useState('');
+  const [accessControlLoaded, setAccessControlLoaded] = useState(false);
 
   // ── Tasks tab ─────────────────────────────────────────────────────────────
   const [tasks, setTasks] = useState([]);
@@ -151,6 +166,9 @@ export function NeuralConfig({ onGoToChat }) {
   const [tasksFilter, setTasksFilter] = useState('all');
   const [tasksPage, setTasksPage] = useState(1);
   const TASKS_PER_PAGE = 10;
+
+  // ── Security tab ───────────────────────────────────────────────────────────
+  const [securityStatus, setSecurityStatus] = useState(null);
 
   // ── Email Agent tab ────────────────────────────────────────────────────────
   const [emailAgentStatus, setEmailAgentStatus] = useState(null);
@@ -336,6 +354,70 @@ export function NeuralConfig({ onGoToChat }) {
     return () => clearTimeout(timer);
   }, [degrees, courses]);
 
+  // ── Load security key status on tab visit ─────────────────────────────────
+  useEffect(() => {
+    if (activeTab === 'security' && securityStatus === null) {
+      getSecurityStatus()
+        .then((data) => setSecurityStatus(data))
+        .catch(() => setSecurityStatus({}));
+    }
+  }, [activeTab, securityStatus]);
+
+  // ── Load resume data when resume sub-tab is selected ──────────────────────
+  useEffect(() => {
+    if (activeTab === 'persona' && personaSubTab === 'resume' && !resumeLoaded) {
+      setResumeLoaded(true);
+      getResume()
+        .then((data) => setExperience(data.experience || []))
+        .catch((err) => console.error('Failed to load resume:', err));
+    }
+  }, [activeTab, personaSubTab, resumeLoaded]);
+
+  // ── Auto-save resume when it changes ──────────────────────────────────────
+  const [resumeSaveTimer, setResumeSaveTimer] = useState(null);
+  useEffect(() => {
+    if (!resumeLoaded) return;
+    if (resumeSaveTimer) clearTimeout(resumeSaveTimer);
+    const timer = setTimeout(() => {
+      saveResume(experience).catch((err) => console.error('Failed to save resume:', err));
+    }, 800);
+    setResumeSaveTimer(timer);
+    return () => clearTimeout(timer);
+  }, [experience]);
+
+  // ── Load contacts on tab visit ─────────────────────────────────────────────
+  useEffect(() => {
+    if (activeTab === 'contacts' && !contactsLoaded) {
+      setContactsLoaded(true);
+      getContacts(user.userId)
+        .then((data) => setContacts(data.contacts || []))
+        .catch((err) => console.error('Failed to load contacts:', err));
+    }
+  }, [activeTab, contactsLoaded]);
+
+  // ── Load world model on tab visit ──────────────────────────────────────────
+  useEffect(() => {
+    if (activeTab === 'worldmodel' && !worldModelLoaded) {
+      setWorldModelLoaded(true);
+      getWorldModel(user.userId)
+        .then((data) => setWorldModelEntries(data.entries || []))
+        .catch((err) => console.error('Failed to load world model:', err));
+    }
+  }, [activeTab, worldModelLoaded]);
+
+  // ── Load access control on tab visit ──────────────────────────────────────
+  useEffect(() => {
+    if (activeTab === 'access' && !accessControlLoaded) {
+      setAccessControlLoaded(true);
+      getAccessControl(user.userId)
+        .then((data) => {
+          setAuthorizations(data.authorizations || []);
+          setConstraints(data.constraints || []);
+        })
+        .catch((err) => console.error('Failed to load access control:', err));
+    }
+  }, [activeTab, accessControlLoaded]);
+
   // ── Settings handlers ──────────────────────────────────────────────────────
   const updateSetting = (key, value) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
@@ -494,12 +576,42 @@ export function NeuralConfig({ onGoToChat }) {
 
   const getTaskIcon = (type) => {
     switch (type) {
-      case 'create_doc': return '📄';
-      case 'send_email': return '📧';
-      case 'draft_email': return '✉️';
-      case 'create_slides': return '📊';
-      case 'create_sheet': return '📋';
-      default: return '⚙️';
+      case 'create_doc':
+        return (
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <path d="M3 2h7l3 3v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" stroke="currentColor" strokeWidth="1.3"/>
+            <path d="M10 2v3h3M5 8h6M5 11h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          </svg>
+        );
+      case 'send_email':
+      case 'draft_email':
+        return (
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <rect x="1.5" y="3.5" width="13" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+            <path d="M1.5 5.5l6.5 4.5 6.5-4.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          </svg>
+        );
+      case 'create_slides':
+        return (
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <rect x="1" y="2" width="14" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+            <path d="M5 14h6M8 12v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          </svg>
+        );
+      case 'create_sheet':
+        return (
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <rect x="1.5" y="1.5" width="13" height="13" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+            <path d="M1.5 6h13M1.5 10h13M6 1.5v13" stroke="currentColor" strokeWidth="1.3"/>
+          </svg>
+        );
+      default:
+        return (
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.3"/>
+            <path d="M8 5v3l2 1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          </svg>
+        );
     }
   };
 
@@ -527,6 +639,95 @@ export function NeuralConfig({ onGoToChat }) {
   // ── Utils ──────────────────────────────────────────────────────────────────
   const formatDate = (iso) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   const formatSize = (b) => b < 1024 ? `${b} B` : `${(b / 1024).toFixed(1)} KB`;
+
+  // ── Contact handlers ───────────────────────────────────────────────────────
+  const handleAddContact = async (contact) => {
+    try {
+      const res = await addContact(user.userId, contact);
+      setContacts((prev) => [...prev, { id: res.id, ...contact }]);
+      setShowContactForm(false);
+    } catch (err) {
+      addToast(`Failed to add contact: ${err.message}`, 'failed');
+    }
+  };
+
+  const handleDeleteContact = async (contactId, index) => {
+    try {
+      await deleteContact(user.userId, contactId);
+      setContacts((prev) => prev.filter((_, j) => j !== index));
+    } catch (err) {
+      addToast(`Failed to delete contact: ${err.message}`, 'failed');
+    }
+  };
+
+  // ── World model handlers ───────────────────────────────────────────────────
+  const handleAddWorldModelEntry = async (entry) => {
+    try {
+      const res = await addWorldModelEntry(user.userId, entry);
+      setWorldModelEntries((prev) => [...prev, { id: res.id, ...entry }]);
+      setShowWMForm(false);
+    } catch (err) {
+      addToast(`Failed to add entry: ${err.message}`, 'failed');
+    }
+  };
+
+  const handleDeleteWorldModelEntry = async (entryId, index) => {
+    try {
+      await deleteWorldModelEntry(user.userId, entryId);
+      setWorldModelEntries((prev) => prev.filter((_, j) => j !== index));
+    } catch (err) {
+      addToast(`Failed to delete entry: ${err.message}`, 'failed');
+    }
+  };
+
+  const handleToggleWorldModelEntry = async (entry, index) => {
+    const newEnabled = !entry.enabled;
+    setWorldModelEntries((prev) => prev.map((x, j) => j === index ? { ...x, enabled: newEnabled } : x));
+    try {
+      await toggleWorldModelEntry(user.userId, entry.id, newEnabled);
+    } catch (err) {
+      // revert on failure
+      setWorldModelEntries((prev) => prev.map((x, j) => j === index ? { ...x, enabled: !newEnabled } : x));
+      addToast(`Failed to toggle entry: ${err.message}`, 'failed');
+    }
+  };
+
+  // ── Access control handlers ────────────────────────────────────────────────
+  const persistAccessControl = async (newAuth, newConstraints) => {
+    try {
+      await saveAccessControl(user.userId, newAuth, newConstraints);
+    } catch (err) {
+      addToast(`Failed to save access control: ${err.message}`, 'failed');
+    }
+  };
+
+  const handleAddAuthorization = () => {
+    if (!authInput.trim()) return;
+    const updated = [...authorizations, authInput.trim()];
+    setAuthorizations(updated);
+    setAuthInput('');
+    persistAccessControl(updated, constraints);
+  };
+
+  const handleDeleteAuthorization = (index) => {
+    const updated = authorizations.filter((_, j) => j !== index);
+    setAuthorizations(updated);
+    persistAccessControl(updated, constraints);
+  };
+
+  const handleAddConstraint = () => {
+    if (!constraintInput.trim()) return;
+    const updated = [...constraints, constraintInput.trim()];
+    setConstraints(updated);
+    setConstraintInput('');
+    persistAccessControl(authorizations, updated);
+  };
+
+  const handleDeleteConstraint = (index) => {
+    const updated = constraints.filter((_, j) => j !== index);
+    setConstraints(updated);
+    persistAccessControl(authorizations, updated);
+  };
 
   const filteredContacts = contacts.filter((c) => {
     if (!contactSearch.trim()) return true;
@@ -922,20 +1123,23 @@ export function NeuralConfig({ onGoToChat }) {
             </div>
           ) : (
             <div className="nc-worldmodel-entries">
-              {filteredWorldModel.map((e, i) => (
-                <div key={i} className="nc-worldmodel-entry">
-                  <div className="nc-worldmodel-entry-body">
-                    <div className="nc-worldmodel-entry-title">{e.title}</div>
-                    <div className="nc-worldmodel-entry-content">{e.content}</div>
+              {filteredWorldModel.map((e, i) => {
+                const globalIndex = worldModelEntries.indexOf(e);
+                return (
+                  <div key={e.id || i} className="nc-worldmodel-entry">
+                    <div className="nc-worldmodel-entry-body">
+                      <div className="nc-worldmodel-entry-title">{e.title}</div>
+                      <div className="nc-worldmodel-entry-content">{e.content}</div>
+                    </div>
+                    <span className="nc-worldmodel-entry-type">{e.dataType}</span>
+                    <button className={`nc-worldmodel-toggle${e.enabled ? ' enabled' : ''}`}
+                      onClick={() => handleToggleWorldModelEntry(e, globalIndex)} />
+                    <button className="nc-contact-delete" onClick={() => handleDeleteWorldModelEntry(e.id, globalIndex)}>
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 4L12 12M12 4L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                    </button>
                   </div>
-                  <span className="nc-worldmodel-entry-type">{e.dataType}</span>
-                  <button className={`nc-worldmodel-toggle${e.enabled ? ' enabled' : ''}`}
-                    onClick={() => setWorldModelEntries(worldModelEntries.map((x, j) => i === j ? { ...x, enabled: !x.enabled } : x))} />
-                  <button className="nc-contact-delete" onClick={() => setWorldModelEntries(worldModelEntries.filter((_, j) => j !== i))}>
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 4L12 12M12 4L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -955,7 +1159,9 @@ export function NeuralConfig({ onGoToChat }) {
                     const title = document.getElementById('wm-title').value;
                     const dataType = document.getElementById('wm-type').value;
                     const content = document.getElementById('wm-content').value;
-                    if (title) { setWorldModelEntries([...worldModelEntries, { category: worldModelCat, title, content, dataType, enabled: true }]); setShowWMForm(false); }
+                    if (title) {
+                      handleAddWorldModelEntry({ category: worldModelCat, title, content, dataType, enabled: true });
+                    }
                   }}>Add</button>
                 </div>
               </div>
@@ -998,6 +1204,20 @@ export function NeuralConfig({ onGoToChat }) {
                     </div>
                   ))}
                 </div>
+
+                {!settings.model?.startsWith('claude') && (
+                  <div className="nc-model-apikey">
+                    <label className="nc-form-label">Google / Gemini API Key</label>
+                    <input
+                      className="nc-form-input nc-apikey-input"
+                      type="password"
+                      placeholder="AIza… (or set GOOGLE_API_KEY in .env)"
+                      value={settings.google_api_key || ''}
+                      onChange={(e) => updateSetting('google_api_key', e.target.value)}
+                    />
+                    <div className="nc-subsection-hint">AI Studio key — leave blank to use Vertex AI with Application Default Credentials</div>
+                  </div>
+                )}
 
                 {settings.model?.startsWith('claude') && (
                   <div className="nc-model-apikey">
@@ -1080,13 +1300,13 @@ export function NeuralConfig({ onGoToChat }) {
           ) : (
             <div className="nc-contacts-grid">
               {filteredContacts.map((c, i) => (
-                <div key={i} className="nc-contact-card">
+                <div key={c.id || i} className="nc-contact-card">
                   <div className="nc-contact-name">{c.firstName} {c.lastName}</div>
                   <div className="nc-contact-title">{c.title}</div>
                   <div className="nc-contact-detail"><svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 4l6 4 6-4M2 4v8h12V4" stroke="currentColor" strokeWidth="1.2"/></svg>{c.email}</div>
                   <div className="nc-contact-detail"><svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 2h3l2 4-2 2c1 2 3 4 5 5l2-2 4 2v3c0 1-1 2-2 2C6 16 0 10 0 4c0-1 1-2 2-2" stroke="currentColor" strokeWidth="1.2"/></svg>{c.phone}</div>
                   <div className="nc-contact-actions">
-                    <button className="nc-contact-delete" onClick={() => setContacts(contacts.filter((_, j) => j !== i))}>Delete</button>
+                    <button className="nc-contact-delete" onClick={() => handleDeleteContact(c.id, i)}>Delete</button>
                   </div>
                 </div>
               ))}
@@ -1112,14 +1332,13 @@ export function NeuralConfig({ onGoToChat }) {
                     const fn = document.getElementById('ct-fn').value;
                     const ln = document.getElementById('ct-ln').value;
                     if (fn) {
-                      setContacts([...contacts, {
+                      handleAddContact({
                         firstName: fn, lastName: ln,
                         email: document.getElementById('ct-email').value,
                         phone: document.getElementById('ct-phone').value,
                         title: document.getElementById('ct-title').value,
                         language: document.getElementById('ct-lang').value,
-                      }]);
-                      setShowContactForm(false);
+                      });
                     }
                   }}>Add</button>
                 </div>
@@ -1143,7 +1362,7 @@ export function NeuralConfig({ onGoToChat }) {
               {authorizations.map((a, i) => (
                 <div key={i} className="nc-access-item">
                   <span className="nc-access-item-text">{a}</span>
-                  <button className="nc-access-item-delete" onClick={() => setAuthorizations(authorizations.filter((_, j) => j !== i))}>
+                  <button className="nc-access-item-delete" onClick={() => handleDeleteAuthorization(i)}>
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 4L12 12M12 4L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
                   </button>
                 </div>
@@ -1151,8 +1370,8 @@ export function NeuralConfig({ onGoToChat }) {
             </div>
             <div className="nc-access-add">
               <input className="nc-access-input" placeholder="e.g. Send emails, Schedule meetings" value={authInput}
-                onChange={(e) => setAuthInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && authInput.trim()) { setAuthorizations([...authorizations, authInput.trim()]); setAuthInput(''); } }} />
-              <button className="nc-access-add-btn" onClick={() => { if (authInput.trim()) { setAuthorizations([...authorizations, authInput.trim()]); setAuthInput(''); } }}>Add</button>
+                onChange={(e) => setAuthInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleAddAuthorization(); }} />
+              <button className="nc-access-add-btn" onClick={handleAddAuthorization}>Add</button>
             </div>
           </div>
 
@@ -1162,7 +1381,7 @@ export function NeuralConfig({ onGoToChat }) {
               {constraints.map((c, i) => (
                 <div key={i} className="nc-access-item">
                   <span className="nc-access-item-text">{c}</span>
-                  <button className="nc-access-item-delete" onClick={() => setConstraints(constraints.filter((_, j) => j !== i))}>
+                  <button className="nc-access-item-delete" onClick={() => handleDeleteConstraint(i)}>
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 4L12 12M12 4L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
                   </button>
                 </div>
@@ -1170,8 +1389,8 @@ export function NeuralConfig({ onGoToChat }) {
             </div>
             <div className="nc-access-add">
               <input className="nc-access-input" placeholder="e.g. Never share financial data externally" value={constraintInput}
-                onChange={(e) => setConstraintInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && constraintInput.trim()) { setConstraints([...constraints, constraintInput.trim()]); setConstraintInput(''); } }} />
-              <button className="nc-access-add-btn" onClick={() => { if (constraintInput.trim()) { setConstraints([...constraints, constraintInput.trim()]); setConstraintInput(''); } }}>Add</button>
+                onChange={(e) => setConstraintInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleAddConstraint(); }} />
+              <button className="nc-access-add-btn" onClick={handleAddConstraint}>Add</button>
             </div>
           </div>
         </section>
@@ -1563,12 +1782,21 @@ export function NeuralConfig({ onGoToChat }) {
           <p className="nc-section-desc">API keys and secrets status. These are managed through environment variables.</p>
 
           <div className="nc-security-grid">
-            {SECURITY_KEYS.map((s) => (
-              <div key={s.key} className="nc-security-item">
-                <span className="nc-security-label">{s.label}</span>
-                <span className="nc-status-badge configured">Configured</span>
-              </div>
-            ))}
+            {SECURITY_KEYS.map((s) => {
+              const isConfigured = securityStatus ? !!securityStatus[s.key] : null;
+              return (
+                <div key={s.key} className="nc-security-item">
+                  <span className="nc-security-label">{s.label}</span>
+                  {isConfigured === null ? (
+                    <span className="nc-status-badge">Checking...</span>
+                  ) : isConfigured ? (
+                    <span className="nc-status-badge configured">Configured</span>
+                  ) : (
+                    <span className="nc-status-badge not-configured">Not Configured</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           <div className="nc-security-note">
@@ -1582,7 +1810,20 @@ export function NeuralConfig({ onGoToChat }) {
           {toasts.map((toast) => (
             <div key={toast.id} className={`nc-toast nc-toast-${toast.type}`}>
               <span className="nc-toast-icon">
-                {toast.type === 'completed' ? '✓' : toast.type === 'failed' ? '✕' : 'ℹ'}
+                {toast.type === 'completed' ? (
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                    <path d="M2 7l3 3 6-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                ) : toast.type === 'failed' ? (
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                    <path d="M2 2l9 9M11 2l-9 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                  </svg>
+                ) : (
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                    <circle cx="6.5" cy="6.5" r="5.5" stroke="currentColor" strokeWidth="1.4"/>
+                    <path d="M6.5 5.5v4M6.5 3.5v.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                  </svg>
+                )}
               </span>
               {toast.message}
             </div>
