@@ -53,6 +53,7 @@ tools:
         description: End time in ISO 8601 format
       - name: attendees
         type: array
+        items_type: string
         required: false
         default: []
         description: List of attendee email addresses
@@ -109,6 +110,7 @@ tools:
         description: New event description
       - name: attendees
         type: array
+        items_type: string
         required: false
         default: []
         description: Updated list of attendee email addresses

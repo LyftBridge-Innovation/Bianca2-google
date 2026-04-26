@@ -230,7 +230,12 @@ def _build_langchain_tool(tool_def: dict):
     # Build function parameter string
     param_parts = []
     for p in params:
-        ptype = _PYTHON_TYPE_MAP.get(p["type"], str).__name__
+        if p["type"] == "array":
+            # Use list[item_type] so LangChain generates proper JSON Schema with 'items'
+            item_type = _PYTHON_TYPE_MAP.get(p.get("items_type", "string"), str).__name__
+            ptype = f"list[{item_type}]"
+        else:
+            ptype = _PYTHON_TYPE_MAP.get(p["type"], str).__name__
         if p.get("required", False):
             param_parts.append(f"{p['name']}: {ptype}")
         else:

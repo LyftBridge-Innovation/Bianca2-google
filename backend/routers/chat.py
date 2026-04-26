@@ -166,19 +166,55 @@ def _get_llm():
         _llm_cache["api_key"] = google_key or anthropic_key
 
         if model.startswith("claude"):
-            from langchain_anthropic import ChatAnthropic
-            if not anthropic_key:
-                raise ValueError(
-                    "Anthropic API key is required for Claude models. "
-                    "Add ANTHROPIC_API_KEY to backend/.env or set it in Neural Config → System Prompt."
-                )
-            _llm_cache["instance"] = ChatAnthropic(
-                model=model,
-                temperature=temperature,
-                api_key=anthropic_key,
-                max_retries=4,
-            ).bind_tools(ALL_TOOLS)
-            _chat_logger.info("LLM: Anthropic %s", model)
+            # Route Claude through Vertex AI Model Garden so the call stays on
+            # GCP's internal network (aiplatform.googleapis.com) rather than
+            # hitting api.anthropic.com externally — required when Cloud Run
+            # can't reach the Anthropic public endpoint.
+            # Falls back to direct Anthropic API if ANTHROPIC_API_KEY is
+            # explicitly set AND GCP_PROJECT_ID is not set (local dev only).
+            if GCP_PROJECT_ID:
+                try:
+                    from langchain_google_vertexai.model_garden import ChatAnthropicVertex
+                    _llm_cache["instance"] = ChatAnthropicVertex(
+                        model_name=model,
+                        project=GCP_PROJECT_ID,
+                        location=GCP_LOCATION or "us-east5",
+                        max_output_tokens=8192,
+                    ).bind_tools(ALL_TOOLS)
+                    _chat_logger.info("LLM: Anthropic %s via Vertex AI Model Garden", model)
+                except Exception as vertex_err:
+                    _chat_logger.warning(
+                        "ChatAnthropicVertex unavailable (%s), falling back to direct Anthropic API",
+                        vertex_err,
+                    )
+                    from langchain_anthropic import ChatAnthropic
+                    if not anthropic_key:
+                        raise ValueError(
+                            "Anthropic API key is required for Claude models. "
+                            "Add ANTHROPIC_API_KEY to backend/.env or set it in Neural Config."
+                        )
+                    _llm_cache["instance"] = ChatAnthropic(
+                        model=model,
+                        temperature=temperature,
+                        api_key=anthropic_key,
+                        max_retries=4,
+                    ).bind_tools(ALL_TOOLS)
+                    _chat_logger.info("LLM: Anthropic %s (direct)", model)
+            else:
+                # Local dev — no GCP_PROJECT_ID, use direct Anthropic API
+                from langchain_anthropic import ChatAnthropic
+                if not anthropic_key:
+                    raise ValueError(
+                        "Anthropic API key is required for Claude models locally. "
+                        "Set ANTHROPIC_API_KEY in backend/.env"
+                    )
+                _llm_cache["instance"] = ChatAnthropic(
+                    model=model,
+                    temperature=temperature,
+                    api_key=anthropic_key,
+                    max_retries=4,
+                ).bind_tools(ALL_TOOLS)
+                _chat_logger.info("LLM: Anthropic %s (direct, local)", model)
         elif google_key:
             # Direct AI Studio key provided — use Google GenAI (non-Vertex) client
             from langchain_google_genai import ChatGoogleGenerativeAI
@@ -743,7 +779,8 @@ async def stream_chat_response(request: ChatRequest, background_tasks: Backgroun
         yield format_sse_event("done", {"session_id": session.session_id})
         
     except Exception as e:
-        logger.error(f"Streaming error: {e}")
+        import traceback
+        logger.error(f"Streaming error [{type(e).__name__}]: {e}\n{traceback.format_exc()}")
         yield format_sse_event("error", {"message": str(e)})
 
 
