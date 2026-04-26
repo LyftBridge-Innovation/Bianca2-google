@@ -9,12 +9,11 @@ _SETTINGS_PATH = Path(__file__).parent / "knowledge" / "settings.json"
 _DEFAULT_SETTINGS: dict[str, Any] = {
     "ai_name": "Bianca",
     "ai_role": "AI Chief of Staff",
-    "ai_voice": "shimmer",
+    "ai_voice": "Aoede",
     "primary_language": "English",
     "secondary_language": "",
-    # Default to Gemini 2.5 Flash on Vertex AI — works with ADC, no external key needed.
-    # Switch to a Claude model in Neural Config → System Prompt tab.
-    "model": "gemini-2.5-flash",
+    # Default to Claude Sonnet 4.6 — switch to Gemini in Neural Config → System Prompt tab.
+    "model": "claude-sonnet-4-6",
     "temperature": 0.7,
     "custom_prompt": "",
     "slides_template_id": "",
@@ -24,8 +23,14 @@ _DEFAULT_SETTINGS: dict[str, Any] = {
     "voice_greeting": "",
     "email_polling_interval": 15,
     "email_polling_days": "weekdays",
+    # Google / Gemini API key (AI Studio) — falls back to GOOGLE_API_KEY env var if blank
+    # Leave blank to use Vertex AI with Application Default Credentials instead.
+    "google_api_key": "",
     # Anthropic key — falls back to ANTHROPIC_API_KEY env var if blank
     "anthropic_api_key": "",
+    # Perplexity AI key — falls back to PERPLEXITY_API_KEY env var if blank
+    # Enables perplexity_quick_search and perplexity_deep_research tools in chat.
+    "perplexity_api_key": "",
 }
 
 

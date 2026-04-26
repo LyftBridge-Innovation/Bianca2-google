@@ -58,7 +58,12 @@ export function AppLayout() {
     <div className="app-layout">
       {needsReauth && (
         <div className="reauth-banner">
-          <span className="reauth-banner__icon">⚠</span>
+          <span className="reauth-banner__icon">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M8 2L14.5 13.5H1.5L8 2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+              <path d="M8 6.5v3M8 11.5v.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+            </svg>
+          </span>
           <span className="reauth-banner__text">
             New permissions are required (e.g. Drive file upload for document creation).
           </span>
@@ -73,7 +78,9 @@ export function AppLayout() {
             onClick={() => setNeedsReauth(false)}
             aria-label="Dismiss"
           >
-            ✕
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+            </svg>
           </button>
         </div>
       )}

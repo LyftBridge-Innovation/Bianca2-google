@@ -73,7 +73,7 @@ def generate_reply(user_id: str, email: dict) -> str:
         f"- Sign off naturally as {ai_name}"
     )
 
-    model: str = settings.get("model", "claude-sonnet-4-5-20250929")
+    model: str = settings.get("model", "claude-sonnet-4-6")
 
     if model.startswith("claude"):
         return _reply_via_claude(model, system_prompt, user_message, settings)

@@ -9,27 +9,26 @@
   overflow: hidden;
 }
 
-/* Ambient orb behind the content */
-.empty-state::before {
-  content: '';
+/* ─── Background glow orb ────────────────────────────────────────────────── */
+.empty-state-glow {
   position: absolute;
-  top: 20%;
+  top: 15%;
   left: 50%;
   transform: translateX(-50%);
-  width: 480px;
-  height: 480px;
+  width: 520px;
+  height: 520px;
   background: radial-gradient(
     circle,
-    rgba(41, 108, 172, 0.06) 0%,
-    rgba(93, 134, 173, 0.03) 50%,
-    transparent 70%
+    rgba(41, 108, 172, 0.07) 0%,
+    rgba(93, 134, 173, 0.03) 45%,
+    transparent 68%
   );
   border-radius: 50%;
   pointer-events: none;
 }
 
 .empty-state-content {
-  max-width: 580px;
+  max-width: 560px;
   text-align: center;
   position: relative;
   z-index: 1;
@@ -37,104 +36,111 @@
 
 /* ─── Brand mark ─────────────────────────────────────────────────────────── */
 .empty-state-mark {
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   background: var(--gradient-accent);
   color: #ffffff;
   font-family: var(--font-display);
   font-size: 22px;
-  font-weight: 400;
-  letter-spacing: 0.04em;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 24px;
-  box-shadow: 0 0 32px rgba(41, 108, 172, 0.35), 0 0 64px rgba(41, 108, 172, 0.12);
-  animation: staggerIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  margin: 0 auto 20px;
+  box-shadow: 0 0 28px rgba(41, 108, 172, 0.40), 0 0 56px rgba(41, 108, 172, 0.12);
+  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* ─── Hero title ─────────────────────────────────────────────────────────── */
+/* ─── Section badge ──────────────────────────────────────────────────────── */
+.empty-state-badge {
+  margin: 0 auto 24px;
+  animation: fadeInUp 0.55s 0.05s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ─── Headline ───────────────────────────────────────────────────────────── */
 .empty-state-title {
   font-family: var(--font-display);
-  font-size: 64px;
-  font-weight: 400;
-  background: var(--gradient-text-gold);
+  font-size: clamp(36px, 4.5vw, 52px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin: 0 0 16px 0;
+  animation: fadeInUp 0.6s 0.1s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.empty-state-title__gradient {
+  background: var(--gradient-text);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  filter: drop-shadow(0 0 28px rgba(93, 134, 173, 0.22));
-  letter-spacing: 0.04em;
-  margin: 0 0 12px 0;
-  animation: staggerIn 0.6s 0.05s cubic-bezier(0.16, 1, 0.3, 1) both;
+  filter: drop-shadow(0 0 24px rgba(93, 134, 173, 0.20));
 }
 
-.empty-state-subtitle {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text-muted);
-  margin: 0 0 52px 0;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  animation: staggerIn 0.6s 0.12s cubic-bezier(0.16, 1, 0.3, 1) both;
+/* ─── Description ────────────────────────────────────────────────────────── */
+.empty-state-description {
+  font-size: 14.5px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  margin: 0 0 44px 0;
+  line-height: 1.6;
+  animation: fadeInUp 0.6s 0.15s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* ─── Suggestions ────────────────────────────────────────────────────────── */
-.empty-state-suggestions {
-  animation: staggerIn 0.6s 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.empty-state-prompt {
-  font-size: 10.5px;
-  font-weight: 500;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin: 0 0 16px 0;
-}
-
-.empty-state-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+/* ─── Feature chips ──────────────────────────────────────────────────────── */
+.empty-state-chips {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+  animation: fadeInUp 0.6s 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.empty-state-list li {
-  font-size: 13.5px;
-  color: var(--text-secondary);
-  padding: 14px 18px;
+.empty-state-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 16px;
   background: var(--bg-glass);
-  backdrop-filter: var(--glass-backdrop);
-  -webkit-backdrop-filter: var(--glass-backdrop);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   text-align: left;
   cursor: default;
-  line-height: 1.5;
   transition: border-color var(--transition-base), background var(--transition-base),
-              color var(--transition-base), transform var(--transition-base),
-              box-shadow var(--transition-base);
+              transform var(--transition-base), box-shadow var(--transition-base);
 }
 
-.empty-state-list li:hover {
+.empty-state-chip:hover {
   border-color: var(--accent-border);
   background: var(--accent-glow);
-  color: var(--text-primary);
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2), 0 0 16px rgba(41, 108, 172, 0.06);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2), 0 0 16px rgba(41, 108, 172, 0.07);
 }
 
-/* ─── Stagger animation ──────────────────────────────────────────────────── */
-@keyframes staggerIn {
-  from {
-    opacity: 0;
-    transform: translateY(18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Gradient icon background */
+.empty-state-chip__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--gradient-accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(41, 108, 172, 0.30);
+}
+
+.empty-state-chip__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  transition: color var(--transition-fast);
+}
+
+.empty-state-chip:hover .empty-state-chip__label {
+  color: var(--text-primary);
 }

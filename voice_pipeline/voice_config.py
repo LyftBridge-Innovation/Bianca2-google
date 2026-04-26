@@ -7,7 +7,12 @@ load_dotenv()
 
 # ── API ───────────────────────────────────────────────────────────────────────
 GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY", "")
+
+# AI Studio model (used when GOOGLE_API_KEY is set — local dev)
 MODEL = "gemini-2.5-flash-native-audio-preview-12-2025"
+
+# Vertex AI Live model (reserved for future use)
+VERTEX_MODEL = "gemini-2.0-flash-live-001"
 
 # ── Audio ─────────────────────────────────────────────────────────────────────
 # pyaudio is only needed for local mic/speaker (not in FastAPI server context)

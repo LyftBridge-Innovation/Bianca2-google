@@ -20,3 +20,4 @@ reportlab
 twilio>=9.0
 python-multipart
 google-genai>=1.0
+httpx
