@@ -155,3 +155,42 @@ main_story.append(cols)
 - **Use `Spacer(1, N * inch)`** between sections for breathing room
 - **Tables require `setStyle`** for professional appearance — plain tables look bare
 - **Match `colWidths` sum to available page width** (page width - left margin - right margin)
+
+## CRITICAL: Never redefine built-in styles — this crashes with KeyError
+
+`getSampleStyleSheet()` already defines these names — calling `styles.add(ParagraphStyle('Heading1', ...))` with any of them raises `KeyError: "Style 'Heading1' already defined in stylesheet"` and **crashes the script**.
+
+Built-in names you must NEVER pass to `styles.add()`:
+`Normal`, `BodyText`, `BodyText2`, `BodyText3`, `BodyTextIndent`, `BodyTextIndent2`, `BodyTextIndent3`,
+`Bullet`, `Definition`, `Italic`, `Code`, `Title`, `Subtitle`, `Heading1` through `Heading6`,
+`TOCHeading`, `toc1` through `toc9`, `OrderedList`, `UnorderedList`
+
+**To use a built-in style:** `styles['Heading1']`
+**To create a custom style:** always use a unique name that is NOT in the list above, e.g. `'SectionTitle'`, `'CustomBody'`, `'MyHeading'`
+
+```python
+# ❌ WRONG — crashes with KeyError
+styles.add(ParagraphStyle('Heading1', parent=styles['Normal'], fontSize=18))
+
+# ✅ CORRECT — use existing style directly
+heading_style = styles['Heading1']
+story.append(Paragraph("Section Title", heading_style))
+
+# ✅ CORRECT — custom style with unique name
+custom_heading = ParagraphStyle(
+    'SectionTitle',      # unique name NOT in the built-in list
+    parent=styles['Normal'],
+    fontSize=18,
+    fontName='Helvetica-Bold',
+    textColor=colors.HexColor("#2E75B6"),
+)
+story.append(Paragraph("Section Title", custom_heading))
+```
+
+## CRITICAL: No network calls — the script runs in a sandboxed subprocess
+
+The script has **no internet access** and must not make any network calls.
+- **No** `urllib`, `requests`, `httpx`, `urllib.request.urlopen`, etc.
+- **No** downloading images, fonts, or any external resources
+- All content must be hardcoded in the script itself
+- The script must complete in under 30 seconds

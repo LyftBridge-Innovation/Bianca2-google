@@ -694,48 +694,27 @@ async def stream_chat_response(request: ChatRequest, background_tasks: Backgroun
             
             response = _get_llm().invoke(_sanitize_messages(messages))
         
-        # Now stream the final response token by token
-        # Need to reinvoke with streaming to get tokens
+        # Emit the final response we already have from invoke() — no extra API call.
+        # Streaming the content in chunks gives the frontend a smooth render.
         accumulated_content = ""
-        
-        for chunk in _get_llm().stream(_sanitize_messages(messages)):
-            if hasattr(chunk, 'content') and chunk.content:
-                # Handle both string and list content from streaming chunks
-                if isinstance(chunk.content, str):
-                    token = chunk.content
-                elif isinstance(chunk.content, list):
-                    # Extract text from list of content blocks
-                    text_parts = []
-                    for block in chunk.content:
-                        if isinstance(block, dict) and block.get("type") == "text":
-                            text_parts.append(block.get("text", ""))
-                        elif isinstance(block, str):
-                            text_parts.append(block)
-                    token = "".join(text_parts)
-                else:
-                    token = str(chunk.content)
-                
-                if token:  # Only yield non-empty tokens
-                    accumulated_content += token
-                    yield format_sse_event("token", {"token": token})
-        
-        # If no streaming content (shouldn't happen), use the response we have
+
+        content = response.content
+        if isinstance(content, str):
+            accumulated_content = content
+        elif isinstance(content, list):
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    accumulated_content += block.get("text", "")
+                elif isinstance(block, str):
+                    accumulated_content += block
+        else:
+            accumulated_content = str(content) if content else ""
+
         if not accumulated_content:
-            if isinstance(response.content, str):
-                accumulated_content = response.content
-            elif isinstance(response.content, list):
-                text_parts = []
-                for block in response.content:
-                    if isinstance(block, dict) and block.get("type") == "text":
-                        text_parts.append(block.get("text", ""))
-                    elif isinstance(block, str):
-                        text_parts.append(block)
-                accumulated_content = " ".join(text_parts) if text_parts else "I've completed your request."
-            else:
-                accumulated_content = str(response.content)
-            
-            # Yield as single token if we had to fall back
-            yield format_sse_event("token", {"token": accumulated_content})
+            accumulated_content = "I've completed your request."
+
+        # Yield in one shot (invoke already ran; splitting is unnecessary overhead)
+        yield format_sse_event("token", {"token": accumulated_content})
         
         # Persist assistant message
         assistant_message = Message(role="assistant", content=accumulated_content)
