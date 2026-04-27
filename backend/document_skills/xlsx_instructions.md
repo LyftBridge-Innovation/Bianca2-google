@@ -113,3 +113,11 @@ wb.save("output.xlsx")
 - **Professional font** — use Arial or Calibri consistently
 - **Preserve existing templates** when modifying — never override established patterns
 - **Use `data_only=True`** only for reading (saves strip formulas permanently if resaved)
+
+## CRITICAL: No network calls — the script runs in a sandboxed subprocess
+
+The script has **no internet access** and must not make any network calls.
+- **No** `urllib`, `requests`, `httpx`, `urllib.request.urlopen`, etc.
+- **No** downloading images, templates, or any external resources
+- All data and content must be hardcoded in the script itself
+- The script must complete in under 30 seconds

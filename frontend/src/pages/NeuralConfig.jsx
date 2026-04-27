@@ -55,7 +55,6 @@ const MODEL_GROUPS = [
     provider: 'Anthropic',
     color: '#c96442',
     models: [
-      { id: 'claude-sonnet-4-6',          label: 'Claude Sonnet 4.6',  desc: 'Latest — most capable' },
       { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6', desc: 'Best balance' },
       { id: 'claude-opus-4-6',            label: 'Claude Opus 4.6',    desc: 'Most powerful' },
       { id: 'claude-haiku-4-5-20251001',  label: 'Claude Haiku 4.5',   desc: 'Fast & cheap' },

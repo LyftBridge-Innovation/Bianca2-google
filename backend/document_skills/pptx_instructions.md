@@ -201,3 +201,11 @@ slide.addChart(pres.charts.PIE, [{
 - **Shadow `offset` must be non-negative** — negative values corrupt the file
 - **Each presentation needs a fresh `pptxgen()` instance**
 - **Don't repeat the same layout** across all slides — vary columns, cards, callouts
+
+## CRITICAL: No network calls — the script runs in a sandboxed subprocess
+
+The script has **no internet access** and must not make any network calls.
+- **No** `fetch`, `axios`, `https.get`, `http.get`, or any URL requests
+- **No** downloading images, fonts, or templates from the internet
+- All content and data must be hardcoded in the script itself
+- The script must complete in under 30 seconds

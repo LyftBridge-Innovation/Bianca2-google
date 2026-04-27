@@ -138,3 +138,11 @@ new Paragraph({ children: [
 - **Tables need dual widths** — `columnWidths` array AND cell `width`, both must match
 - **Use `ShadingType.CLEAR`** — never SOLID for table shading
 - **Override built-in styles** — use exact IDs: "Heading1", "Heading2" with `outlineLevel`
+
+## CRITICAL: No network calls — the script runs in a sandboxed subprocess
+
+The script has **no internet access** and must not make any network calls.
+- **No** `fetch`, `axios`, `https.get`, `http.get`, or any URL requests
+- **No** downloading images, fonts, or templates from the internet
+- All content must be hardcoded in the script itself
+- The script must complete in under 30 seconds
