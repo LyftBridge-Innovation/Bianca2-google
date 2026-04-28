@@ -14,7 +14,7 @@ from memory_utils import generate_human_readable
 from summarization import summarize_session_sync
 from memory_retrieval import retrieve_memories_for_message, format_memory_injection
 from skill_matcher import match_skills, build_skills_block
-from settings_loader import load_settings
+from user_config_loader import load_user_settings
 from task_service import task_service
 from document_skill_loader import get_document_skill_block, detect_document_type, extract_doc_title
 import logging as _logging
@@ -124,85 +124,72 @@ def _load_user_prompt_context(user_id: str) -> dict:
     return result
 
 
-# LLM cache — recreated when model/temperature settings change
-_llm_cache: dict = {"model": None, "temperature": None, "api_key": None, "instance": None}
+# LLM cache keyed by config fingerprint — shared across requests with identical settings.
+# Key format: "{model}::{temperature}::{key_prefix}" — safe for multi-user BYOK.
+_llm_cache: dict[str, object] = {}
 
 
-def _get_llm():
+def _get_llm(user_id: str):
     """
-    Return the LLM instance for the currently configured model.
+    Return the LLM instance for the given user's configured model and BYOK keys.
 
     Supports two providers:
       - Anthropic  : any model whose name starts with "claude"
-      - Vertex AI  : everything else (gemini-*)
+      - Gemini     : google_api_key set → AI Studio; no key → Vertex AI (ADC)
 
-    The instance is cached and recreated only when settings change.
+    BYOK: API keys are read strictly from the user's Firestore agent_settings.
+    There is no fallback to shared environment variables.
     """
-    import os
-    settings = load_settings()
+    settings = load_user_settings(user_id)
     model: str = settings.get("model", "gemini-2.5-flash")
     temperature: float = settings.get("temperature", 0.7)
 
-    # Resolve Google API key: settings override → env var
-    google_key: str = (
-        settings.get("google_api_key", "").strip()
-        or os.getenv("GOOGLE_API_KEY", "")
-    )
+    # BYOK — user's own key only, no env var fallback
+    google_key: str = settings.get("google_api_key", "").strip()
+    anthropic_key: str = settings.get("anthropic_api_key", "").strip()
 
-    # Resolve Anthropic key: settings override → env var
-    anthropic_key: str = (
-        settings.get("anthropic_api_key", "").strip()
-        or os.getenv("ANTHROPIC_API_KEY", "")
-    )
+    # Cache key includes enough of the key to distinguish different users' configs
+    # without storing the full key in memory beyond what LangChain already holds.
+    key_prefix = (google_key or anthropic_key)[:12] if (google_key or anthropic_key) else "adc"
+    cache_key = f"{model}::{temperature}::{key_prefix}"
 
-    if (
-        _llm_cache["instance"] is None
-        or _llm_cache["model"] != model
-        or _llm_cache["temperature"] != temperature
-        or _llm_cache["api_key"] != (google_key or anthropic_key)
-    ):
-        _llm_cache["model"] = model
-        _llm_cache["temperature"] = temperature
-        _llm_cache["api_key"] = google_key or anthropic_key
-
+    if cache_key not in _llm_cache:
         if model.startswith("claude"):
             from langchain_anthropic import ChatAnthropic
             if not anthropic_key:
                 raise ValueError(
-                    "Anthropic API key is required for Claude models. "
-                    "Add ANTHROPIC_API_KEY to backend/.env or set it in Neural Config → System Prompt."
+                    f"Anthropic API key is required for Claude models (user {user_id}). "
+                    "Set your key in Neural Config → API Keys."
                 )
-            _llm_cache["instance"] = ChatAnthropic(
+            _llm_cache[cache_key] = ChatAnthropic(
                 model=model,
                 temperature=temperature,
                 api_key=anthropic_key,
                 max_retries=4,
-                # 60s timeout — prevents cold-start TCP failures to api.anthropic.com
                 timeout=60.0,
             ).bind_tools(ALL_TOOLS)
-            _chat_logger.info("LLM: Anthropic %s (direct)", model)
+            _chat_logger.info("LLM: Anthropic %s (user %s)", model, user_id)
         elif google_key:
-            # Direct AI Studio key provided — use Google GenAI (non-Vertex) client
             from langchain_google_genai import ChatGoogleGenerativeAI
-            _llm_cache["instance"] = ChatGoogleGenerativeAI(
+            _llm_cache[cache_key] = ChatGoogleGenerativeAI(
                 model=model,
                 temperature=temperature,
                 google_api_key=google_key,
                 max_retries=6,
             ).bind_tools(ALL_TOOLS)
-            _chat_logger.info("LLM: Google GenAI (AI Studio) %s", model)
+            _chat_logger.info("LLM: Google GenAI (AI Studio) %s (user %s)", model, user_id)
         else:
-            # No explicit key — fall back to Vertex AI with Application Default Credentials
-            _llm_cache["instance"] = ChatVertexAI(
+            # No BYOK key — use Vertex AI with Application Default Credentials (service account)
+            _llm_cache[cache_key] = ChatVertexAI(
                 model=model,
                 project=GCP_PROJECT_ID,
                 location=GCP_LOCATION,
                 temperature=temperature,
                 max_retries=6,
             ).bind_tools(ALL_TOOLS)
-            _chat_logger.info("LLM: Vertex AI %s", model)
+            _chat_logger.info("LLM: Vertex AI (ADC) %s (user %s)", model, user_id)
 
-    return _llm_cache["instance"]
+    return _llm_cache[cache_key]
 
 
 # Initialize Firestore collections
@@ -272,6 +259,7 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
 
         # Build message chain with system prompt and session history
         messages = [SystemMessage(content=get_system_prompt(
+            user_id=request.user_id,
             world_model=user_ctx["world_model"],
             authorizations=user_ctx["authorizations"],
             constraints=user_ctx["constraints"],
@@ -302,6 +290,7 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
             
             # Update system message (first message in chain)
             original_system_prompt = get_system_prompt(
+                user_id=request.user_id,
                 world_model=user_ctx["world_model"],
                 authorizations=user_ctx["authorizations"],
                 constraints=user_ctx["constraints"],
@@ -336,7 +325,7 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
         session_tool_calls = []
         
         # Invoke LLM with tools
-        response = _get_llm().invoke(_sanitize_messages(messages))
+        response = _get_llm(request.user_id).invoke(_sanitize_messages(messages))
         
         # Handle tool calls if present
         max_iterations = 5
@@ -424,7 +413,7 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
                 ))
             
             # Get next response from LLM
-            response = _get_llm().invoke(_sanitize_messages(messages))
+            response = _get_llm(request.user_id).invoke(_sanitize_messages(messages))
         
         # Extract final text response
         if isinstance(response.content, str):
@@ -511,8 +500,7 @@ async def stream_chat_response(request: ChatRequest, background_tasks: Backgroun
         # the user gets an instant response while generation runs in background.
         doc_type = detect_document_type(request.message)
         if doc_type:
-            import os
-            _settings = load_settings()
+            _settings = load_user_settings(request.user_id)
             title = extract_doc_title(request.message, doc_type)
             doc_task = task_service.create_task(
                 user_id=request.user_id,
@@ -522,10 +510,8 @@ async def stream_chat_response(request: ChatRequest, background_tasks: Backgroun
                     "document_type": doc_type,
                     "title": title,
                     "model": _settings.get("model", "claude-sonnet-4-6"),
-                    "anthropic_api_key": (
-                        _settings.get("anthropic_api_key", "").strip()
-                        or os.environ.get("ANTHROPIC_API_KEY", "")
-                    ),
+                    # BYOK — user's own key only
+                    "anthropic_api_key": _settings.get("anthropic_api_key", "").strip(),
                 },
                 session_id=session.session_id,
             )
@@ -554,6 +540,7 @@ async def stream_chat_response(request: ChatRequest, background_tasks: Backgroun
 
         # Build message chain
         messages = [SystemMessage(content=get_system_prompt(
+            user_id=request.user_id,
             world_model=user_ctx["world_model"],
             authorizations=user_ctx["authorizations"],
             constraints=user_ctx["constraints"],
@@ -580,6 +567,7 @@ async def stream_chat_response(request: ChatRequest, background_tasks: Backgroun
                 entity_memories=memory_data["entity_memories"]
             )
             original_system_prompt = get_system_prompt(
+                user_id=request.user_id,
                 world_model=user_ctx["world_model"],
                 authorizations=user_ctx["authorizations"],
                 constraints=user_ctx["constraints"],
@@ -608,7 +596,7 @@ async def stream_chat_response(request: ChatRequest, background_tasks: Backgroun
         session_tool_calls = []
         
         # Run agentic loop FIRST (tool calls complete before streaming)
-        response = _get_llm().invoke(_sanitize_messages(messages))
+        response = _get_llm(request.user_id).invoke(_sanitize_messages(messages))
         
         max_iterations = 5
         iteration = 0
@@ -692,7 +680,7 @@ async def stream_chat_response(request: ChatRequest, background_tasks: Backgroun
                     tool_call_id=tool_call["id"]
                 ))
             
-            response = _get_llm().invoke(_sanitize_messages(messages))
+            response = _get_llm(request.user_id).invoke(_sanitize_messages(messages))
         
         # Emit the final response we already have from invoke() — no extra API call.
         # Streaming the content in chunks gives the frontend a smooth render.

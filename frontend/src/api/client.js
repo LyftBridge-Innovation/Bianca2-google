@@ -130,76 +130,78 @@ export async function unpublishSkill(userId, publicSkillId) {
 
 /**
  * Get all knowledge sections (persona, education, expertise, company).
+ * Sections: persona, education_text, expertise, company
  */
-export async function getKnowledge() {
-  return apiRequest('/config/knowledge');
+export async function getKnowledge(userId) {
+  return apiRequest(`/config/knowledge?user_id=${encodeURIComponent(userId)}`);
 }
 
 /**
- * Save updated content to a specific knowledge file.
+ * Save a knowledge section for a user.
+ * sectionId: 'persona' | 'education_text' | 'expertise' | 'company'
  */
-export async function saveKnowledgeFile(category, filename, content) {
-  return apiRequest(`/config/knowledge/${category}/${filename}`, {
+export async function saveKnowledgeSection(userId, sectionId, content) {
+  return apiRequest(`/config/knowledge/${sectionId}`, {
     method: 'PUT',
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ user_id: userId, content }),
   });
 }
 
 /**
- * Get the current values list.
+ * Get the values list for a user (custom or defaults).
  */
-export async function getValues() {
-  return apiRequest('/config/values');
+export async function getValues(userId) {
+  return apiRequest(`/config/values?user_id=${encodeURIComponent(userId)}`);
 }
 
 /**
- * Save an updated values list.
+ * Save an updated values list for a user.
  */
-export async function saveValues(values) {
+export async function saveValues(userId, values) {
   return apiRequest('/config/values', {
     method: 'PUT',
-    body: JSON.stringify({ values }),
+    body: JSON.stringify({ user_id: userId, values }),
   });
 }
 
 /**
- * Get all config settings (identity, model, integrations).
+ * Get all agent settings for a user.
  */
-export async function getSettings() {
-  return apiRequest('/config/settings');
+export async function getSettings(userId) {
+  return apiRequest(`/config/settings?user_id=${encodeURIComponent(userId)}`);
 }
 
 /**
- * Update config settings (partial merge).
+ * Update agent settings for a user (partial merge).
  */
-export async function updateSettings(settings) {
+export async function updateSettings(userId, settings) {
   return apiRequest('/config/settings', {
     method: 'PUT',
-    body: JSON.stringify({ settings }),
+    body: JSON.stringify({ user_id: userId, settings }),
   });
 }
 
 /**
- * Get the fully assembled system prompt for preview.
+ * Get the fully assembled system prompt for a user (preview).
  */
-export async function getSystemPrompt() {
-  return apiRequest('/config/system-prompt');
+export async function getSystemPrompt(userId) {
+  return apiRequest(`/config/system-prompt?user_id=${encodeURIComponent(userId)}`);
 }
 
 /**
- * Get education data (degrees and courses).
+ * Get education data (degrees and courses) for a user.
  */
-export async function getEducation() {
-  return apiRequest('/config/education');
+export async function getEducation(userId) {
+  return apiRequest(`/config/education?user_id=${encodeURIComponent(userId)}`);
 }
 
 /**
- * Save education data (degrees and courses).
+ * Save education data (degrees and courses) for a user.
  */
-export async function saveEducation(degrees, courses) {
+export async function saveEducation(userId, degrees, courses) {
   return apiRequest('/config/education', {
     method: 'PUT',
-    body: JSON.stringify({ degrees, courses }),
+    body: JSON.stringify({ user_id: userId, degrees, courses }),
   });
 }
 
@@ -319,21 +321,21 @@ export async function savePhoneNumber(userId, phoneNumber) {
 
 // ── Resume API ───────────────────────────────────────────────────────────────
 
-/** Get security key status (boolean presence flags, no values). */
-export async function getSecurityStatus() {
-  return apiRequest('/config/security-status');
+/** Get security / API key status for a user (BYOK — no env var fallback). */
+export async function getSecurityStatus(userId) {
+  return apiRequest(`/config/security-status?user_id=${encodeURIComponent(userId)}`);
 }
 
-/** Get resume data (work experience). */
-export async function getResume() {
-  return apiRequest('/config/resume');
+/** Get resume data (work experience) for a user. */
+export async function getResume(userId) {
+  return apiRequest(`/config/resume?user_id=${encodeURIComponent(userId)}`);
 }
 
-/** Save resume data (work experience). */
-export async function saveResume(experience) {
+/** Save resume data (work experience) for a user. */
+export async function saveResume(userId, experience) {
   return apiRequest('/config/resume', {
     method: 'PUT',
-    body: JSON.stringify({ experience }),
+    body: JSON.stringify({ user_id: userId, experience }),
   });
 }
 
@@ -397,6 +399,35 @@ export async function saveAccessControl(userId, authorizations, constraints) {
   return apiRequest('/user-data/access-control', {
     method: 'PUT',
     body: JSON.stringify({ user_id: userId, authorizations, constraints }),
+  });
+}
+
+// ── Onboarding API ────────────────────────────────────────────────────────────
+
+/** Get the current onboarding state for a user. Returns { completed, step } */
+export async function getOnboardingState(userId) {
+  return apiRequest(`/onboarding/state?user_id=${encodeURIComponent(userId)}`);
+}
+
+/** Update the current onboarding step (progress tracking). */
+export async function updateOnboardingStep(userId, step) {
+  return apiRequest('/onboarding/step', {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId, step }),
+  });
+}
+
+/**
+ * Complete onboarding — saves all config and marks the user's setup as done.
+ * @param {string} userId
+ * @param {object} data - { ai_name, ai_role, primary_language, model,
+ *                          anthropic_api_key, google_api_key,
+ *                          persona, expertise, company, values? }
+ */
+export async function completeOnboarding(userId, data) {
+  return apiRequest('/onboarding/complete', {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId, ...data }),
   });
 }
 

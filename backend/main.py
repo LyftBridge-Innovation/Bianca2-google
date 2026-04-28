@@ -11,6 +11,7 @@ from routers.tasks import router as tasks_router
 from routers.email_agent import router as email_agent_router
 from routers.twilio_voice import router as twilio_voice_router
 from routers.user_data import router as user_data_router
+from routers.onboarding import router as onboarding_router
 
 app = FastAPI(title="AI Chief of Staff", version="0.3.0")
 
@@ -34,6 +35,7 @@ app.include_router(tasks_router)
 app.include_router(email_agent_router)
 app.include_router(twilio_voice_router)
 app.include_router(user_data_router)
+app.include_router(onboarding_router)
 
 
 @app.get("/")

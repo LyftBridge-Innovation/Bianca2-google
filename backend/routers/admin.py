@@ -252,3 +252,114 @@ def get_all_memories(user_id: str, limit: int = 20):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch all memories: {str(e)}")
 
+
+# ── Config migration ──────────────────────────────────────────────────────────
+
+@router.post("/migrate-config/{user_id}")
+def migrate_disk_config_to_firestore(user_id: str):
+    """
+    One-time migration: copy the current global disk config (settings.json,
+    knowledge/ files, values_override.json, education.json, resume.json) into
+    Firestore for the given user.
+
+    After this runs, the user will see their existing config in Neural Config
+    and will have onboarding_completed=True (skipping the wizard).
+
+    Safe to run multiple times — it overwrites Firestore with the latest disk
+    state on each call.
+    """
+    import json
+    from pathlib import Path
+    from models import AgentSettings
+
+    user = fs.get_user(user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+
+    _knowledge_dir = Path(__file__).parent.parent / "knowledge"
+    migrated: dict = {}
+
+    # ── Agent settings ────────────────────────────────────────────────────────
+    settings_path = _knowledge_dir / "settings.json"
+    disk_settings: dict = {}
+    if settings_path.exists():
+        try:
+            disk_settings = json.loads(settings_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    # Merge disk settings onto the model defaults, then onto what's already in Firestore
+    merged = AgentSettings().model_dump()
+    merged.update(disk_settings)
+    # Preserve any keys already in the user's Firestore settings (e.g. api keys set manually)
+    existing = user.agent_settings.model_dump()
+    for key in ("google_api_key", "anthropic_api_key", "perplexity_api_key"):
+        if existing.get(key, ""):
+            merged[key] = existing[key]
+    fs.save_user_agent_settings(user_id, AgentSettings(**merged))
+    migrated["settings"] = True
+
+    # ── Knowledge text sections ───────────────────────────────────────────────
+    section_map = {
+        "01_persona":   "persona",
+        "02_education": "education_text",
+        "03_expertise": "expertise",
+        "04_company":   "company",
+    }
+    migrated["knowledge"] = {}
+    for dir_name, section_id in section_map.items():
+        dir_path = _knowledge_dir / dir_name
+        if not dir_path.exists():
+            continue
+        parts = []
+        for fp in sorted(dir_path.iterdir()):
+            if fp.suffix in (".txt", ".md") and fp.is_file():
+                content = fp.read_text(encoding="utf-8").strip()
+                if content:
+                    parts.append(content)
+        if parts:
+            fs.save_user_knowledge_section(user_id, section_id, "\n\n".join(parts))
+            migrated["knowledge"][section_id] = True
+
+    # ── Education structured ──────────────────────────────────────────────────
+    edu_path = _knowledge_dir / "education.json"
+    if edu_path.exists():
+        try:
+            edu_data = json.loads(edu_path.read_text(encoding="utf-8"))
+            fs.save_user_education(user_id, edu_data)
+            migrated["education"] = True
+        except Exception:
+            migrated["education"] = False
+
+    # ── Resume ────────────────────────────────────────────────────────────────
+    resume_path = _knowledge_dir / "resume.json"
+    if resume_path.exists():
+        try:
+            resume_data = json.loads(resume_path.read_text(encoding="utf-8"))
+            fs.save_user_resume(user_id, resume_data)
+            migrated["resume"] = True
+        except Exception:
+            migrated["resume"] = False
+
+    # ── Values ────────────────────────────────────────────────────────────────
+    values_path = _knowledge_dir / "values_override.json"
+    if values_path.exists():
+        try:
+            values_data = json.loads(values_path.read_text(encoding="utf-8"))
+            if values_data:
+                fs.save_user_values(user_id, values_data)
+                migrated["values"] = True
+        except Exception:
+            migrated["values"] = False
+
+    # ── Mark onboarding complete ──────────────────────────────────────────────
+    fs.update_onboarding_state(user_id, step=5, completed=True)
+    migrated["onboarding_completed"] = True
+
+    return {
+        "ok": True,
+        "user_id": user_id,
+        "migrated": migrated,
+        "message": "Disk config migrated to Firestore. Onboarding marked complete.",
+    }
+
