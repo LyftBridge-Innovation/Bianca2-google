@@ -3,15 +3,21 @@ import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
 import { LoginPage } from './components/Auth/LoginPage';
 import { AppLayout } from './components/Layout/AppLayout';
+import { OnboardingFlow } from './pages/OnboardingFlow';
 import './styles/global.css';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 function AppContent() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   if (!isAuthenticated) {
     return <LoginPage />;
+  }
+
+  // New users (or users who haven't completed onboarding) see the wizard first
+  if (!user?.onboardingCompleted) {
+    return <OnboardingFlow />;
   }
 
   return <AppLayout />;

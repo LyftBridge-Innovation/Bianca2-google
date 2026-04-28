@@ -1,43 +1,31 @@
-"""Config router — knowledge base, values, identity, education, and system prompt."""
+"""Config router — per-user agent settings, knowledge, values, education, resume."""
 
-import json
 import os
-import re
-from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
-from values import BIANCA_VALUES
+from models import AgentSettings, FirestoreCollections
 from prompts import get_system_prompt
-from settings_loader import load_settings, _DEFAULT_SETTINGS, _SETTINGS_PATH
+from values import BIANCA_VALUES
 
 router = APIRouter(prefix="/config", tags=["config"])
 
-_KNOWLEDGE_DIR = Path(__file__).parent.parent / "knowledge"
-_VALUES_OVERRIDE_PATH = _KNOWLEDGE_DIR / "values_override.json"
-_EDUCATION_PATH = _KNOWLEDGE_DIR / "education.json"
-_RESUME_PATH = _KNOWLEDGE_DIR / "resume.json"
+_fs = FirestoreCollections()
 
-_KNOWLEDGE_SECTIONS = [
-    ("01_persona", "Persona & Identity"),
-    ("02_education", "Training Background"),
-    ("03_expertise", "Domain Expertise"),
-    ("04_company", "Product & Mission"),
-]
-_VALID_CATEGORIES = {d for d, _ in _KNOWLEDGE_SECTIONS}
+_VALID_KNOWLEDGE_SECTIONS = {"persona", "education_text", "expertise", "company"}
+_SECTION_LABELS = {
+    "persona": "Persona & Identity",
+    "education_text": "Training Background",
+    "expertise": "Domain Expertise",
+    "company": "Product & Mission",
+}
 
-
-def _save_settings(settings: dict[str, Any]) -> None:
-    _SETTINGS_PATH.write_text(
-        json.dumps(settings, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
-
-
-# ── Models ────────────────────────────────────────────────────────────────────
+# ── Request / Response models ─────────────────────────────────────────────────
 
 class KnowledgeSaveRequest(BaseModel):
+    user_id: str
     content: str
 
 
@@ -48,10 +36,12 @@ class ValueItem(BaseModel):
 
 
 class SaveValuesRequest(BaseModel):
+    user_id: str
     values: list[ValueItem]
 
 
 class SettingsUpdate(BaseModel):
+    user_id: str
     settings: dict[str, Any]
 
 
@@ -69,6 +59,7 @@ class CourseItem(BaseModel):
 
 
 class EducationData(BaseModel):
+    user_id: str
     degrees: list[DegreeItem]
     courses: list[CourseItem]
 
@@ -87,164 +78,124 @@ class ExperienceItem(BaseModel):
 
 
 class ResumeData(BaseModel):
+    user_id: str
     experience: list[ExperienceItem]
 
 
 # ── Knowledge endpoints ───────────────────────────────────────────────────────
 
 @router.get("/knowledge")
-def get_knowledge():
-    """Return all knowledge categories with their file contents."""
+def get_knowledge(user_id: str = Query(...)):
+    """Return all knowledge sections for the given user from Firestore."""
     sections = []
-    for category, label in _KNOWLEDGE_SECTIONS:
-        dir_path = _KNOWLEDGE_DIR / category
-        files = []
-        if dir_path.exists():
-            for file_path in sorted(dir_path.iterdir()):
-                if file_path.is_file():
-                    files.append({
-                        "filename": file_path.name,
-                        "content": file_path.read_text(encoding="utf-8"),
-                    })
-        sections.append({"category": category, "label": label, "files": files})
+    for section_id, label in _SECTION_LABELS.items():
+        content = _fs.get_user_knowledge_section(user_id, section_id)
+        sections.append({"section_id": section_id, "label": label, "content": content})
     return {"sections": sections}
 
 
-@router.put("/knowledge/{category}/{filename}")
-def save_knowledge_file(category: str, filename: str, body: KnowledgeSaveRequest):
-    """Overwrite an existing knowledge file with new content."""
-    if category not in _VALID_CATEGORIES:
-        raise HTTPException(status_code=400, detail="Invalid category")
-    if ".." in filename or "/" in filename or not re.match(r"^[\w\-. ]+$", filename):
-        raise HTTPException(status_code=400, detail="Invalid filename")
-
-    file_path = _KNOWLEDGE_DIR / category / filename
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
-
-    file_path.write_text(body.content, encoding="utf-8")
+@router.put("/knowledge/{section_id}")
+def save_knowledge_section(section_id: str, body: KnowledgeSaveRequest):
+    """Write a knowledge section for the given user to Firestore."""
+    if section_id not in _VALID_KNOWLEDGE_SECTIONS:
+        raise HTTPException(status_code=400, detail=f"Invalid section_id. Must be one of: {sorted(_VALID_KNOWLEDGE_SECTIONS)}")
+    _fs.save_user_knowledge_section(body.user_id, section_id, body.content)
     return {"ok": True}
 
 
 # ── Values endpoints ──────────────────────────────────────────────────────────
 
 @router.get("/values")
-def get_values():
-    """Return the current values list (override if present, else defaults)."""
-    if _VALUES_OVERRIDE_PATH.exists():
-        try:
-            data = json.loads(_VALUES_OVERRIDE_PATH.read_text(encoding="utf-8"))
-            return {"values": data, "source": "override"}
-        except Exception:
-            pass
+def get_values(user_id: str = Query(...)):
+    """Return the values list for the given user (custom or defaults)."""
+    values = _fs.get_user_values(user_id)
+    if values:
+        return {"values": values, "source": "user"}
     return {"values": BIANCA_VALUES, "source": "default"}
 
 
 @router.put("/values")
 def save_values(body: SaveValuesRequest):
-    """Persist an updated values list to the override file."""
+    """Persist an updated values list for the given user to Firestore."""
     if not body.values:
         raise HTTPException(status_code=400, detail="Values list cannot be empty")
-
     sorted_values = sorted(
         [v.model_dump() for v in body.values], key=lambda v: v["priority"]
     )
-    _VALUES_OVERRIDE_PATH.write_text(
-        json.dumps(sorted_values, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    _fs.save_user_values(body.user_id, sorted_values)
     return {"ok": True}
 
 
-# ── Settings endpoints (identity, model, integrations) ───────────────────────
+# ── Settings endpoints ────────────────────────────────────────────────────────
+
+_ALLOWED_SETTING_KEYS = set(AgentSettings.model_fields.keys())
+
 
 @router.get("/settings")
-def get_settings():
-    """Return all config settings (identity, model, integrations)."""
-    return {"settings": load_settings()}
+def get_settings(user_id: str = Query(...)):
+    """Return all agent settings for the given user from Firestore."""
+    user = _fs.get_user(user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+    return {"settings": user.agent_settings.model_dump()}
 
 
 @router.put("/settings")
 def update_settings(body: SettingsUpdate):
-    """Merge partial settings update into the persisted config."""
-    allowed_keys = set(_DEFAULT_SETTINGS.keys())
-    invalid = set(body.settings.keys()) - allowed_keys
+    """Merge a partial settings update for the given user into Firestore."""
+    invalid = set(body.settings.keys()) - _ALLOWED_SETTING_KEYS
     if invalid:
-        raise HTTPException(status_code=400, detail=f"Unknown keys: {invalid}")
+        raise HTTPException(status_code=400, detail=f"Unknown setting keys: {sorted(invalid)}")
 
-    current = load_settings()
-    current.update(body.settings)
-    _save_settings(current)
-    return {"ok": True, "settings": current}
+    user = _fs.get_user(body.user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail=f"User {body.user_id} not found")
 
+    # Merge the incoming partial update onto the existing settings
+    merged = user.agent_settings.model_dump()
+    merged.update(body.settings)
+    updated_settings = AgentSettings(**merged)
 
-# ── Education endpoints (degrees + courses) ──────────────────────────────────
-
-def _load_education() -> dict:
-    """Load education data from JSON file."""
-    if _EDUCATION_PATH.exists():
-        try:
-            return json.loads(_EDUCATION_PATH.read_text(encoding="utf-8"))
-        except Exception:
-            pass
-    return {"degrees": [], "courses": []}
+    _fs.save_user_agent_settings(body.user_id, updated_settings)
+    return {"ok": True, "settings": updated_settings.model_dump()}
 
 
-def _save_education(data: dict) -> None:
-    """Save education data to JSON file."""
-    _EDUCATION_PATH.write_text(
-        json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
-
+# ── Education endpoints ───────────────────────────────────────────────────────
 
 @router.get("/education")
-def get_education():
-    """Return the current education data (degrees and courses)."""
-    return _load_education()
+def get_education(user_id: str = Query(...)):
+    """Return structured education data for the given user from Firestore."""
+    return _fs.get_user_education(user_id)
 
 
 @router.put("/education")
 def save_education(body: EducationData):
-    """Save updated education data (degrees and courses)."""
+    """Save structured education data for the given user to Firestore."""
     data = {
         "degrees": [d.model_dump() for d in body.degrees],
         "courses": [c.model_dump() for c in body.courses],
     }
-    _save_education(data)
+    _fs.save_user_education(body.user_id, data)
     return {"ok": True}
 
 
-# ── Resume endpoints (experience) ────────────────────────────────────────────
-
-def _load_resume() -> dict:
-    if _RESUME_PATH.exists():
-        try:
-            return json.loads(_RESUME_PATH.read_text(encoding="utf-8"))
-        except Exception:
-            pass
-    return {"experience": []}
-
-
-def _save_resume(data: dict) -> None:
-    _RESUME_PATH.write_text(
-        json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
-
+# ── Resume endpoints ──────────────────────────────────────────────────────────
 
 @router.get("/resume")
-def get_resume():
-    """Return the current resume data (work experience)."""
-    return _load_resume()
+def get_resume(user_id: str = Query(...)):
+    """Return resume / work experience data for the given user from Firestore."""
+    return _fs.get_user_resume(user_id)
 
 
 @router.put("/resume")
 def save_resume(body: ResumeData):
-    """Save updated resume data (work experience)."""
+    """Save resume data for the given user to Firestore."""
     data = {"experience": [e.model_dump() for e in body.experience]}
-    _save_resume(data)
+    _fs.save_user_resume(body.user_id, data)
     return {"ok": True}
 
 
-# ── Phone number registration ────────────────────────────────────────────────
+# ── Phone number ──────────────────────────────────────────────────────────────
 
 @router.get("/phone")
 def get_phone_number(user_id: str = Query(...)):
@@ -275,26 +226,22 @@ def save_phone_number(body: PhoneNumberRequest):
     return {"ok": True}
 
 
-# ── Security keys status ─────────────────────────────────────────────────────
+# ── Security / API key status ─────────────────────────────────────────────────
 
 @router.get("/security-status")
-def get_security_status():
-    """Return boolean presence flags for configured API keys and secrets.
-    Values are never returned — only whether each key is set."""
-    settings = load_settings()
+def get_security_status(user_id: str = Query(...)):
+    """
+    Return boolean presence flags for configured API keys.
+
+    BYOK: reflects the user's own stored keys only — no env var fallback.
+    Values are never returned — only whether each key is set.
+    """
+    user = _fs.get_user(user_id)
+    s = user.agent_settings if user else AgentSettings()
     return {
-        "google_api_key": bool(
-            settings.get("google_api_key", "").strip()
-            or os.getenv("GOOGLE_API_KEY", "")
-        ),
-        "anthropic_api_key": bool(
-            settings.get("anthropic_api_key", "").strip()
-            or os.getenv("ANTHROPIC_API_KEY", "")
-        ),
-        "perplexity_api_key": bool(
-            settings.get("perplexity_api_key", "").strip()
-            or os.getenv("PERPLEXITY_API_KEY", "")
-        ),
+        "google_api_key": bool(s.google_api_key.strip()),
+        "anthropic_api_key": bool(s.anthropic_api_key.strip()),
+        "perplexity_api_key": bool(s.perplexity_api_key.strip()),
         "google_workspace_token": bool(os.getenv("GOOGLE_WORKSPACE_CLI_TOKEN", "")),
         "twilio": bool(
             os.getenv("TWILIO_ACCOUNT_SID", "")
@@ -303,10 +250,10 @@ def get_security_status():
     }
 
 
-# ── System prompt preview ────────────────────────────────────────────────────
+# ── System prompt preview ─────────────────────────────────────────────────────
 
 @router.get("/system-prompt")
-def get_system_prompt_preview():
-    """Return the fully assembled system prompt for preview."""
-    prompt = get_system_prompt()
+def get_system_prompt_preview(user_id: str = Query(...)):
+    """Return the fully assembled system prompt for a user (preview only)."""
+    prompt = get_system_prompt(user_id=user_id)
     return {"prompt": prompt, "length": len(prompt)}

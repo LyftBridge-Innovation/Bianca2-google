@@ -7,7 +7,7 @@ import { useSkills } from '../hooks/useSkills';
 import {
   publishSkill,
   getKnowledge,
-  saveKnowledgeFile,
+  saveKnowledgeSection,
   getValues,
   saveValues,
   getSettings,
@@ -195,7 +195,7 @@ export function NeuralConfig({ onGoToChat }) {
     const needsSettings = ['persona', 'prompt', 'integrations'].includes(activeTab);
     if (needsSettings && settings === null && !settingsLoading) {
       setSettingsLoading(true);
-      getSettings()
+      getSettings(user.userId)
         .then((data) => setSettings(data.settings))
         .catch((err) => alert(`Failed to load settings: ${err.message}`))
         .finally(() => setSettingsLoading(false));
@@ -301,7 +301,7 @@ export function NeuralConfig({ onGoToChat }) {
   useEffect(() => {
     if (activeTab === 'persona' && personaSubTab === 'knowledge' && sections === null && !knowledgeLoading) {
       setKnowledgeLoading(true);
-      getKnowledge()
+      getKnowledge(user.userId)
         .then((data) => setSections(data.sections))
         .catch((err) => alert(`Failed to load knowledge: ${err.message}`))
         .finally(() => setKnowledgeLoading(false));
@@ -311,7 +311,7 @@ export function NeuralConfig({ onGoToChat }) {
   useEffect(() => {
     if (activeTab === 'values' && values === null && !valuesLoading) {
       setValuesLoading(true);
-      getValues()
+      getValues(user.userId)
         .then((data) => setValues(data.values))
         .catch((err) => alert(`Failed to load values: ${err.message}`))
         .finally(() => setValuesLoading(false));
@@ -321,7 +321,7 @@ export function NeuralConfig({ onGoToChat }) {
   useEffect(() => {
     if (activeTab === 'prompt' && promptPreview === null && !promptLoading) {
       setPromptLoading(true);
-      getSystemPrompt()
+      getSystemPrompt(user.userId)
         .then((data) => setPromptPreview(data))
         .catch((err) => alert(`Failed to load prompt: ${err.message}`))
         .finally(() => setPromptLoading(false));
@@ -333,7 +333,7 @@ export function NeuralConfig({ onGoToChat }) {
   useEffect(() => {
     if (activeTab === 'persona' && personaSubTab === 'education' && !educationLoaded) {
       setEducationLoaded(true);
-      getEducation()
+      getEducation(user.userId)
         .then((data) => {
           setDegrees(data.degrees || []);
           setCourses(data.courses || []);
@@ -348,7 +348,7 @@ export function NeuralConfig({ onGoToChat }) {
     if (!educationLoaded) return; // Don't save on initial load
     if (educationSaveTimer) clearTimeout(educationSaveTimer);
     const timer = setTimeout(() => {
-      saveEducation(degrees, courses).catch((err) => console.error('Failed to save education:', err));
+      saveEducation(user.userId, degrees, courses).catch((err) => console.error('Failed to save education:', err));
     }, 800);
     setEducationSaveTimer(timer);
     return () => clearTimeout(timer);
@@ -357,7 +357,7 @@ export function NeuralConfig({ onGoToChat }) {
   // ── Load security key status on tab visit ─────────────────────────────────
   useEffect(() => {
     if (activeTab === 'security' && securityStatus === null) {
-      getSecurityStatus()
+      getSecurityStatus(user.userId)
         .then((data) => setSecurityStatus(data))
         .catch(() => setSecurityStatus({}));
     }
@@ -367,7 +367,7 @@ export function NeuralConfig({ onGoToChat }) {
   useEffect(() => {
     if (activeTab === 'persona' && personaSubTab === 'resume' && !resumeLoaded) {
       setResumeLoaded(true);
-      getResume()
+      getResume(user.userId)
         .then((data) => setExperience(data.experience || []))
         .catch((err) => console.error('Failed to load resume:', err));
     }
@@ -379,7 +379,7 @@ export function NeuralConfig({ onGoToChat }) {
     if (!resumeLoaded) return;
     if (resumeSaveTimer) clearTimeout(resumeSaveTimer);
     const timer = setTimeout(() => {
-      saveResume(experience).catch((err) => console.error('Failed to save resume:', err));
+      saveResume(user.userId, experience).catch((err) => console.error('Failed to save resume:', err));
     }, 800);
     setResumeSaveTimer(timer);
     return () => clearTimeout(timer);
@@ -427,7 +427,7 @@ export function NeuralConfig({ onGoToChat }) {
   const saveSettingsHandler = async () => {
     setSettingsSaving(true);
     try {
-      await updateSettings(settings);
+      await updateSettings(user.userId, settings);
       setSettingsDirty(false);
     } catch (err) {
       alert(`Save failed: ${err.message}`);
@@ -463,9 +463,9 @@ export function NeuralConfig({ onGoToChat }) {
   };
 
   // ── Knowledge handlers ─────────────────────────────────────────────────────
-  const startEditFile = (category, filename, content) => {
+  const startEditFile = (sectionId, content) => {
     if (editingFile && !confirm('Discard unsaved changes?')) return;
-    setEditingFile({ category, filename });
+    setEditingFile({ section_id: sectionId });
     setEditDraft(content);
   };
 
@@ -474,14 +474,10 @@ export function NeuralConfig({ onGoToChat }) {
   const saveFile = async () => {
     setKnowledgeSaving(true);
     try {
-      await saveKnowledgeFile(editingFile.category, editingFile.filename, editDraft);
+      await saveKnowledgeSection(user.userId, editingFile.section_id, editDraft);
       setSections((prev) =>
         prev.map((s) =>
-          s.category !== editingFile.category ? s : {
-            ...s, files: s.files.map((f) =>
-              f.filename !== editingFile.filename ? f : { ...f, content: editDraft }
-            ),
-          }
+          s.section_id !== editingFile.section_id ? s : { ...s, content: editDraft }
         )
       );
       setEditingFile(null);
@@ -508,7 +504,7 @@ export function NeuralConfig({ onGoToChat }) {
       v.priority === editingPriority ? { ...v, title: valueDraft.title, rule: valueDraft.rule } : v
     );
     try {
-      await saveValues(updated);
+      await saveValues(user.userId, updated);
       setValues(updated);
       setEditingPriority(null);
     } catch (err) {
@@ -521,7 +517,7 @@ export function NeuralConfig({ onGoToChat }) {
   // ── System Prompt handlers ─────────────────────────────────────────────────
   const refreshPrompt = () => {
     setPromptLoading(true);
-    getSystemPrompt()
+    getSystemPrompt(user.userId)
       .then((data) => setPromptPreview(data))
       .catch((err) => alert(`Failed to refresh: ${err.message}`))
       .finally(() => setPromptLoading(false));
@@ -871,14 +867,14 @@ export function NeuralConfig({ onGoToChat }) {
               <h2 className="nc-section-title">Knowledge Base</h2>
               <p className="nc-section-desc">Files that shape Bianca's identity, expertise, and context.</p>
               {knowledgeLoading ? <div className="nc-loading">Loading...</div> : sections === null ? null : (
-                sections.map((section) => section.files.map((file) => {
-                  const isEditing = editingFile?.category === section.category && editingFile?.filename === file.filename;
+                sections.map((section) => {
+                  const isEditing = editingFile?.section_id === section.section_id;
                   return (
-                    <div key={`${section.category}/${file.filename}`} className="nc-knowledge-section">
+                    <div key={section.section_id} className="nc-knowledge-section">
                       <div className="nc-knowledge-header">
                         <span className="nc-knowledge-label">{section.label}</span>
                         {!isEditing && (
-                          <button className="nc-edit-trigger-btn" onClick={() => startEditFile(section.category, file.filename, file.content)}>
+                          <button className="nc-edit-trigger-btn" onClick={() => startEditFile(section.section_id, section.content)}>
                             <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M11.5 2.5L13.5 4.5L5 13H3V11L11.5 2.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>
                             Edit
                           </button>
@@ -894,12 +890,12 @@ export function NeuralConfig({ onGoToChat }) {
                             </div>
                           </>
                         ) : (
-                          <div className="nc-knowledge-text"><ReactMarkdown remarkPlugins={[remarkGfm]}>{file.content}</ReactMarkdown></div>
+                          <div className="nc-knowledge-text"><ReactMarkdown remarkPlugins={[remarkGfm]}>{section.content || '_No content yet. Click Edit to add._'}</ReactMarkdown></div>
                         )}
                       </div>
                     </div>
                   );
-                }))
+                })
               )}
             </>
           )}

@@ -13,17 +13,14 @@ This module owns layers 1–4. Memory is injected separately in the chat router.
 """
 
 from datetime import datetime
-from knowledge_loader import build_knowledge_block
-from values import build_values_block
-from settings_loader import load_settings
+from user_config_loader import load_user_settings, build_user_knowledge_block, build_user_values_block
 
 
 # ---------------------------------------------------------------------------
 # Layer 1 — Identity anchor
 # ---------------------------------------------------------------------------
 
-def _build_identity_block() -> str:
-    settings = load_settings()
+def _build_identity_block(settings: dict) -> str:
     ai_name = settings.get("ai_name", "Bianca")
     ai_role = settings.get("ai_role", "AI Chief of Staff")
     now = datetime.now()
@@ -117,6 +114,7 @@ def _build_template_hints(settings: dict) -> str:
 
 
 def get_system_prompt(
+    user_id: str,
     world_model: list | None = None,
     authorizations: list | None = None,
     constraints: list | None = None,
@@ -124,30 +122,27 @@ def get_system_prompt(
     """
     Assemble and return the full system prompt for a chat session.
 
-    Called once per request. The identity block is generated fresh each call
-    so the date/time is always accurate. Knowledge and values are fast
-    (small text files + in-memory constants).
+    All content (identity, knowledge, values) is loaded from Firestore and is
+    scoped to the given user_id — no global disk files are used.
 
     Args:
+        user_id:         The authenticated user whose per-user config to load.
         world_model:     List of world-model entries {category, title, content} to inject.
         authorizations:  List of authorization strings from Access Control tab.
         constraints:     List of constraint strings from Access Control tab.
     """
-    settings = load_settings()
+    settings = load_user_settings(user_id)
     custom_prompt = settings.get("custom_prompt", "").strip()
 
     blocks = [
-        _build_identity_block(),
-        build_knowledge_block(),
-        build_values_block(),
+        _build_identity_block(settings),
+        build_user_knowledge_block(user_id),
+        build_user_values_block(user_id),
         _CAPABILITIES_BLOCK,
     ]
 
-    # Perplexity block — only injected when a key is configured
-    _pplx_key = (
-        settings.get("perplexity_api_key", "").strip()
-        or __import__("os").getenv("PERPLEXITY_API_KEY", "")
-    )
+    # Perplexity block — only injected when the user has set their own key (BYOK)
+    _pplx_key = settings.get("perplexity_api_key", "").strip()
     if _pplx_key:
         blocks.append(_PERPLEXITY_BLOCK)
 
@@ -161,7 +156,7 @@ def get_system_prompt(
     if authorizations or constraints:
         blocks.append(_build_access_control_block(authorizations or [], constraints or []))
 
-    # Drop any empty blocks (e.g. if knowledge files are missing)
+    # Drop any empty blocks (e.g. if user has no knowledge configured yet)
     assembled = "\n\n".join(block for block in blocks if block.strip())
 
     # Prepend custom prompt if set

@@ -10,6 +10,29 @@ import uuid
 # ── Pydantic Models ───────────────────────────────────────────────────────────
 
 
+class AgentSettings(BaseModel):
+    """Per-user agent configuration — embedded in the User document."""
+    ai_name: str = "Bianca"
+    ai_role: str = "AI Chief of Staff"
+    ai_voice: str = "Aoede"
+    primary_language: str = "English"
+    secondary_language: str = ""
+    model: str = "claude-sonnet-4-6"
+    temperature: float = 0.7
+    custom_prompt: str = ""
+    slides_template_id: str = ""
+    docs_template_id: str = ""
+    sheets_template_id: str = ""
+    voice_prompt: str = ""
+    voice_greeting: str = ""
+    email_polling_interval: int = 15
+    email_polling_days: str = "weekdays"
+    # BYOK — never falls back to shared env vars
+    google_api_key: str = ""
+    anthropic_api_key: str = ""
+    perplexity_api_key: str = ""
+
+
 class User(BaseModel):
     """User profile document."""
     user_id: str
@@ -26,6 +49,11 @@ class User(BaseModel):
     )
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    # ── Agent configuration (per-user, BYOK) ──────────────────────────────────
+    agent_settings: AgentSettings = Field(default_factory=AgentSettings)
+    onboarding_completed: bool = False
+    onboarding_step: int = 0  # 0=not started, 1-4=steps in progress, 5=done
 
     # ── Email Agent ────────────────────────────────────────────────────────────
     email_agent_enabled: bool = False
@@ -351,3 +379,112 @@ class FirestoreCollections:
             doc_ref.delete()
             return True
         return False
+
+    # ── Per-user Agent Settings ────────────────────────────────────────────────
+
+    def save_user_agent_settings(self, user_id: str, settings: 'AgentSettings') -> None:
+        """Write agent_settings + onboarding fields into the user document."""
+        self.db.collection('users').document(user_id).set(
+            {
+                'agent_settings': settings.model_dump(),
+                'updated_at': datetime.now(timezone.utc),
+            },
+            merge=True,
+        )
+
+    def update_onboarding_state(self, user_id: str, step: int, completed: bool = False) -> None:
+        """Update the onboarding step / completion flag on the user document."""
+        self.db.collection('users').document(user_id).set(
+            {
+                'onboarding_step': step,
+                'onboarding_completed': completed,
+                'updated_at': datetime.now(timezone.utc),
+            },
+            merge=True,
+        )
+
+    # ── Per-user Knowledge Subcollection ──────────────────────────────────────
+    # Subcollection path: users/{user_id}/knowledge/{section_id}
+    # Valid section_ids: persona, education_text, expertise, company,
+    #                    education_structured, resume
+
+    def _knowledge_ref(self, user_id: str, section_id: str):
+        return (
+            self.db.collection('users').document(user_id)
+            .collection('knowledge').document(section_id)
+        )
+
+    def save_user_knowledge_section(self, user_id: str, section_id: str, content: str) -> None:
+        """Save a text knowledge section for a user."""
+        self._knowledge_ref(user_id, section_id).set(
+            {'content': content, 'updated_at': datetime.now(timezone.utc)}
+        )
+
+    def get_user_knowledge_section(self, user_id: str, section_id: str) -> str:
+        """Get a text knowledge section. Returns '' if not found."""
+        doc = self._knowledge_ref(user_id, section_id).get()
+        if doc.exists:
+            return doc.to_dict().get('content', '')
+        return ''
+
+    def save_user_education(self, user_id: str, data: Dict[str, Any]) -> None:
+        """Save structured education data (degrees + courses)."""
+        self._knowledge_ref(user_id, 'education_structured').set(
+            {**data, 'updated_at': datetime.now(timezone.utc)}
+        )
+
+    def get_user_education(self, user_id: str) -> Dict[str, Any]:
+        """Get structured education data. Returns empty structure if not found."""
+        doc = self._knowledge_ref(user_id, 'education_structured').get()
+        if doc.exists:
+            d = doc.to_dict()
+            return {'degrees': d.get('degrees', []), 'courses': d.get('courses', [])}
+        return {'degrees': [], 'courses': []}
+
+    def save_user_resume(self, user_id: str, data: Dict[str, Any]) -> None:
+        """Save resume / work experience data."""
+        self._knowledge_ref(user_id, 'resume').set(
+            {**data, 'updated_at': datetime.now(timezone.utc)}
+        )
+
+    def get_user_resume(self, user_id: str) -> Dict[str, Any]:
+        """Get resume data. Returns empty structure if not found."""
+        doc = self._knowledge_ref(user_id, 'resume').get()
+        if doc.exists:
+            d = doc.to_dict()
+            return {'experience': d.get('experience', [])}
+        return {'experience': []}
+
+    def get_all_user_knowledge_sections(self, user_id: str) -> Dict[str, str]:
+        """Return all text sections in one call. Returns {section_id: content}."""
+        docs = (
+            self.db.collection('users').document(user_id)
+            .collection('knowledge').stream()
+        )
+        result: Dict[str, str] = {}
+        for doc in docs:
+            d = doc.to_dict()
+            result[doc.id] = d.get('content', '')
+        return result
+
+    # ── Per-user Values Subcollection ─────────────────────────────────────────
+    # Subcollection path: users/{user_id}/values/config
+
+    def _values_ref(self, user_id: str):
+        return (
+            self.db.collection('users').document(user_id)
+            .collection('values').document('config')
+        )
+
+    def save_user_values(self, user_id: str, values: List[Dict[str, Any]]) -> None:
+        """Save a user's values list."""
+        self._values_ref(user_id).set(
+            {'items': values, 'updated_at': datetime.now(timezone.utc)}
+        )
+
+    def get_user_values(self, user_id: str) -> List[Dict[str, Any]]:
+        """Get a user's values list. Returns [] if not set (caller should use defaults)."""
+        doc = self._values_ref(user_id).get()
+        if doc.exists:
+            return doc.to_dict().get('items', [])
+        return []

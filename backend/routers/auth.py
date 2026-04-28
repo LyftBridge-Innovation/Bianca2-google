@@ -47,6 +47,7 @@ class GoogleCallbackResponse(BaseModel):
     name: str
     email: str
     picture: str
+    onboarding_completed: bool = False
 
 
 @router.post("/google/callback", response_model=GoogleCallbackResponse)
@@ -132,11 +133,16 @@ async def google_callback(request: GoogleCallbackRequest):
 
         logger.info("User authenticated: %s (%s)", email, user_id)
 
+        # Reload to get the latest onboarding state after any writes above
+        stored_user = fs.get_user(user_id)
+        onboarding_completed = stored_user.onboarding_completed if stored_user else False
+
         return GoogleCallbackResponse(
             user_id=user_id,
             name=name,
             email=email,
             picture=picture,
+            onboarding_completed=onboarding_completed,
         )
 
     except HTTPException:

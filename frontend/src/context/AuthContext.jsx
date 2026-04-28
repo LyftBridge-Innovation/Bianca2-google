@@ -35,10 +35,20 @@ export function AuthProvider({ children }) {
       name: userData.name,
       email: userData.email,
       picture: userData.picture,
+      onboardingCompleted: userData.onboarding_completed ?? false,
     };
 
     setUser(userInfo);
     localStorage.setItem('bianca_user', JSON.stringify(userInfo));
+  };
+
+  const markOnboardingComplete = () => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, onboardingCompleted: true };
+      localStorage.setItem('bianca_user', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const logout = () => {
@@ -50,6 +60,7 @@ export function AuthProvider({ children }) {
     user,
     login,
     logout,
+    markOnboardingComplete,
     isAuthenticated: !!user,
   };
 
