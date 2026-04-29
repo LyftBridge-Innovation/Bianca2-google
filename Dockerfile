@@ -18,12 +18,9 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-# Install gws CLI globally via npm
-RUN npm install -g @google/workspace-cli 2>/dev/null || \
-    npm install -g gws 2>/dev/null || \
-    true
-# Fallback: ensure npx can find gws at runtime (npx gws auto-installs)
-ENV GWS_CLI_PATH="npx --yes gws"
+# Install gws CLI globally via npm (correct package: @googleworkspace/cli)
+RUN npm install -g @googleworkspace/cli
+ENV GWS_CLI_PATH="gws"
 
 # Pre-install JS document generation libraries at a fixed location.
 # The document engine symlinks this at runtime — no per-request npm install needed.
