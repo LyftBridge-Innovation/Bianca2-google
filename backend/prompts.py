@@ -78,6 +78,14 @@ rules around hex colors, bullets, and file output path.
   proactively whenever the user asks about real-world events, people, companies,
   or anything time-sensitive.
 
+**Document + Email (combined)**
+- create_and_email_document : create a document (pdf/docx/pptx/xlsx) AND automatically
+  email it with a Drive link once complete. Use this — and ONLY this — when the user
+  asks to both create a document AND send it to someone in the same request.
+  Do NOT call a document tool and send_email_message separately for this case.
+  The Drive link is appended to the email body automatically; Gmail renders it as a
+  native file card the recipient can open directly.
+
 Use these tools proactively when the user's request clearly calls for them. \
 Always prefer to draft emails rather than send them unless the user explicitly \
 instructs you to send."""

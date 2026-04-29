@@ -161,6 +161,31 @@ class TaskService:
                 completed_at=datetime.now(timezone.utc),
             )
             logger.info(f"Task {task_id} completed successfully")
+
+            # Task chaining — if the completed task carried a next_task spec,
+            # build the follow-up task and enqueue it.  For document tasks the
+            # result contains the Drive URL which is injected into the email body
+            # so Gmail renders it as a native Drive file card.
+            next_spec = task.parameters.get("next_task")
+            if next_spec and isinstance(result, dict) and result.get("url"):
+                next_params = next_spec.get("parameters", {}).copy()
+                drive_url = result["url"]
+                doc_title = result.get("title", result.get("name", "document"))
+                next_params["body"] = (
+                    next_params.get("body", "").rstrip()
+                    + f"\n\n{doc_title}: {drive_url}"
+                )
+                follow_up = self.create_task(
+                    task.user_id,
+                    next_spec["type"],
+                    next_params,
+                    task.session_id,
+                )
+                self.enqueue(follow_up.task_id)
+                logger.info(
+                    "Chained task %s → %s (%s)",
+                    task_id, follow_up.task_id, next_spec["type"],
+                )
         except Exception as e:
             self.fs.update_task(
                 task_id,
