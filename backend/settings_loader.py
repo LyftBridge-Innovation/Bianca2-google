@@ -28,9 +28,6 @@ _DEFAULT_SETTINGS: dict[str, Any] = {
     "google_api_key": "",
     # Anthropic key — falls back to ANTHROPIC_API_KEY env var if blank
     "anthropic_api_key": "",
-    # Perplexity AI key — falls back to PERPLEXITY_API_KEY env var if blank
-    # Enables perplexity_quick_search and perplexity_deep_research tools in chat.
-    "perplexity_api_key": "",
 }
 
 

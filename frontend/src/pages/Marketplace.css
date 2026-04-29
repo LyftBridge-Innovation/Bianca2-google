@@ -22,8 +22,6 @@
 .mp-header-logo {
   height: 24px;
   width: auto;
-  opacity: 0.75;
-  filter: drop-shadow(0 1px 6px rgba(41, 108, 172, 0.15));
 }
 
 .mp-footer {

@@ -241,7 +241,6 @@ def get_security_status(user_id: str = Query(...)):
     return {
         "google_api_key": bool(s.google_api_key.strip()),
         "anthropic_api_key": bool(s.anthropic_api_key.strip()),
-        "perplexity_api_key": bool(s.perplexity_api_key.strip()),
         "google_workspace_token": bool(os.getenv("GOOGLE_WORKSPACE_CLI_TOKEN", "")),
         "twilio": bool(
             os.getenv("TWILIO_ACCOUNT_SID", "")
