@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 import { Footer } from '../Layout/Footer';
 import './LoginPage.css';
 
-const LOGO = import.meta.env.BASE_URL + 'lyftbridge.jpeg';
+const LOGO = import.meta.env.BASE_URL + 'lyftbridge-wordmark-dark.png';
 
 const FALLBACK_SCOPES = [
   'https://www.googleapis.com/auth/gmail.modify',
@@ -103,7 +103,7 @@ export function LoginPage() {
 
             <div className="section-badge login-badge">
               <span className="section-badge__dot" />
-              <span className="section-badge__label">AI Chief of Staff</span>
+              <span className="section-badge__label">AI MBA Agent</span>
             </div>
 
             <h1 className="login-headline">

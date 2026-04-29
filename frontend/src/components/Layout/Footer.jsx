@@ -1,6 +1,6 @@
 import './Footer.css';
 
-const LOGO = import.meta.env.BASE_URL + 'lyftbridge.jpeg';
+const LOGO = import.meta.env.BASE_URL + 'lyftbridge-wordmark-dark.png';
 
 export function Footer({ className = '' }) {
   return (

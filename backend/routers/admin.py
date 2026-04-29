@@ -1,5 +1,5 @@
 """Admin endpoints for Phase 3A setup and testing."""
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Query
 from models import FirestoreCollections, User
 import os
 from config import TEST_USER_ID, ASSISTANT_NAME
@@ -293,7 +293,7 @@ def migrate_disk_config_to_firestore(user_id: str):
     merged.update(disk_settings)
     # Preserve any keys already in the user's Firestore settings (e.g. api keys set manually)
     existing = user.agent_settings.model_dump()
-    for key in ("google_api_key", "anthropic_api_key", "perplexity_api_key"):
+    for key in ("google_api_key", "anthropic_api_key"):
         if existing.get(key, ""):
             merged[key] = existing[key]
     fs.save_user_agent_settings(user_id, AgentSettings(**merged))
@@ -361,5 +361,55 @@ def migrate_disk_config_to_firestore(user_id: str):
         "user_id": user_id,
         "migrated": migrated,
         "message": "Disk config migrated to Firestore. Onboarding marked complete.",
+    }
+
+
+# ── User deletion ──────────────────────────────────────────────────────────────
+
+@router.delete("/user/{user_id}")
+def delete_user(
+    user_id: str,
+    confirm: bool = Query(
+        False,
+        description="Must be true to execute the deletion. Prevents accidental calls.",
+    ),
+):
+    """
+    Permanently delete a user and ALL their data from Firestore.
+
+    Deletes:
+      - The user document (users/{user_id})
+      - All subcollections: knowledge, values, skills
+      - All sessions, memories, tasks, and tool_action_log entries for this user
+
+    This is IRREVERSIBLE. You must pass ?confirm=true to execute.
+    """
+    if not confirm:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Deletion requires ?confirm=true. "
+                "This action permanently removes the user and all associated data."
+            ),
+        )
+
+    user = fs.get_user(user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail=f"User {user_id} not found.")
+
+    # Snapshot identity before deleting
+    user_email = user.email
+    user_name  = user.full_name
+
+    deleted = fs.delete_user_all_data(user_id)
+
+    return {
+        "ok": True,
+        "user_id": user_id,
+        "email": user_email,
+        "name": user_name,
+        "deleted": deleted,
+        "total_documents_removed": sum(deleted.values()),
+        "message": f"User {user_email} and all associated data have been permanently deleted.",
     }
 

@@ -30,7 +30,6 @@ class AgentSettings(BaseModel):
     # BYOK — never falls back to shared env vars
     google_api_key: str = ""
     anthropic_api_key: str = ""
-    perplexity_api_key: str = ""
 
 
 class User(BaseModel):
@@ -488,3 +487,74 @@ class FirestoreCollections:
         if doc.exists:
             return doc.to_dict().get('items', [])
         return []
+
+    # ── Full user data deletion ────────────────────────────────────────────────
+
+    def _delete_subcollection(self, parent_ref, subcollection_name: str) -> int:
+        """Delete all documents in a subcollection. Returns count deleted."""
+        count = 0
+        for doc in parent_ref.collection(subcollection_name).stream():
+            doc.reference.delete()
+            count += 1
+        return count
+
+    def _delete_collection_where(self, collection_name: str, field: str, value: str) -> int:
+        """
+        Delete all documents in a top-level collection where field == value.
+        Runs in batches of 400 to stay under Firestore's 500-op batch limit.
+        Returns total count deleted.
+        """
+        count = 0
+        while True:
+            docs = (
+                self.db.collection(collection_name)
+                .where(field, '==', value)
+                .limit(400)
+                .stream()
+            )
+            batch = self.db.batch()
+            batch_count = 0
+            for doc in docs:
+                batch.delete(doc.reference)
+                batch_count += 1
+            if batch_count == 0:
+                break
+            batch.commit()
+            count += batch_count
+        return count
+
+    def delete_user_all_data(self, user_id: str) -> Dict[str, int]:
+        """
+        Permanently delete a user and ALL associated data from Firestore.
+
+        Removes:
+          - users/{user_id}/knowledge/*   (knowledge subcollection)
+          - users/{user_id}/values/*      (values subcollection)
+          - users/{user_id}/skills/*      (skills subcollection)
+          - users/{user_id}               (the user document)
+          - sessions          where user_id == user_id
+          - event_memories    where user_id == user_id
+          - entity_memories   where user_id == user_id
+          - tasks             where user_id == user_id
+          - tool_action_log   where user_id == user_id
+
+        Returns a dict of { collection_name: count_deleted }.
+        This operation is IRREVERSIBLE.
+        """
+        user_ref = self.db.collection('users').document(user_id)
+        deleted: Dict[str, int] = {}
+
+        # 1. Subcollections under the user document
+        deleted['knowledge'] = self._delete_subcollection(user_ref, 'knowledge')
+        deleted['values']    = self._delete_subcollection(user_ref, 'values')
+        deleted['skills']    = self._delete_subcollection(user_ref, 'skills')
+
+        # 2. The user document itself
+        user_ref.delete()
+        deleted['user'] = 1
+
+        # 3. Top-level collections keyed by user_id
+        for col in ('sessions', 'event_memories', 'entity_memories', 'tasks', 'tool_action_log'):
+            deleted[col] = self._delete_collection_where(col, 'user_id', user_id)
+
+        return deleted

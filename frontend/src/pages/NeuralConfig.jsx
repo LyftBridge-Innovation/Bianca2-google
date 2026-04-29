@@ -36,11 +36,12 @@ import {
   toggleWorldModelEntry,
   getAccessControl,
   saveAccessControl,
+  deleteUser,
   API_BASE_URL,
 } from '../api/client';
 import './NeuralConfig.css';
 
-const LOGO = import.meta.env.BASE_URL + 'lyftbridge.jpeg';
+const LOGO = import.meta.env.BASE_URL + 'lyftbridge-wordmark-dark.png';
 
 const VOICE_OPTIONS = [
   { id: 'Aoede', label: 'Aoede', desc: 'Warm female' },
@@ -56,6 +57,7 @@ const MODEL_GROUPS = [
     color: '#c96442',
     models: [
       { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6', desc: 'Best balance' },
+      { id: 'claude-opus-4-7',            label: 'Claude Opus 4.7',    desc: 'Latest — most powerful' },
       { id: 'claude-opus-4-6',            label: 'Claude Opus 4.6',    desc: 'Most powerful' },
       { id: 'claude-haiku-4-5-20251001',  label: 'Claude Haiku 4.5',   desc: 'Fast & cheap' },
     ],
@@ -88,7 +90,6 @@ const WORLD_MODEL_CATEGORIES = [
 const SECURITY_KEYS = [
   { key: 'google_api_key', label: 'Google / Gemini API Key' },
   { key: 'anthropic_api_key', label: 'Anthropic API Key' },
-  { key: 'perplexity_api_key', label: 'Perplexity API Key' },
   { key: 'google_workspace_token', label: 'Google Workspace Token' },
   { key: 'twilio', label: 'Twilio (Voice/SMS)' },
 ];
@@ -169,6 +170,11 @@ export function NeuralConfig({ onGoToChat }) {
 
   // ── Security tab ───────────────────────────────────────────────────────────
   const [securityStatus, setSecurityStatus] = useState(null);
+
+  // ── Delete account modal ───────────────────────────────────────────────────
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('');
+  const [deleteInProgress, setDeleteInProgress] = useState(false);
 
   // ── Email Agent tab ────────────────────────────────────────────────────────
   const [emailAgentStatus, setEmailAgentStatus] = useState(null);
@@ -521,6 +527,20 @@ export function NeuralConfig({ onGoToChat }) {
       .then((data) => setPromptPreview(data))
       .catch((err) => alert(`Failed to refresh: ${err.message}`))
       .finally(() => setPromptLoading(false));
+  };
+
+  // ── Delete account handler ─────────────────────────────────────────────────
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmEmail.trim().toLowerCase() !== user.email.toLowerCase()) return;
+    setDeleteInProgress(true);
+    try {
+      await deleteUser(user.userId);
+      logout();
+    } catch (err) {
+      addToast(`Deletion failed: ${err.message}`, 'failed');
+      setDeleteInProgress(false);
+      setShowDeleteModal(false);
+    }
   };
 
   // ── Task handlers ─────────────────────────────────────────────────────────
@@ -1657,32 +1677,23 @@ export function NeuralConfig({ onGoToChat }) {
                 <input className="nc-template-input" placeholder="Paste Sheets URL or template ID" value={settings.sheets_template_id || ''} onChange={(e) => updateSetting('sheets_template_id', e.target.value)} />
               </div>
 
-              {/* Perplexity AI */}
+              {/* Gemini Deep Research */}
               <div className="nc-integration-card">
                 <div className="nc-integration-header">
                   <div className="nc-integration-icon">
                     <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                       <circle cx="9" cy="9" r="7" stroke="currentColor" strokeWidth="1.3"/>
-                      <path d="M6 9h6M9 6l3 3-3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M9 5v4l2.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                      <circle cx="9" cy="9" r="1.5" fill="currentColor"/>
                     </svg>
                   </div>
-                  <span className="nc-integration-title">Perplexity AI</span>
-                  {settings.perplexity_api_key && <span className="nc-status-badge configured">Configured</span>}
+                  <span className="nc-integration-title">Gemini Deep Research</span>
+                  {settings.google_api_key && <span className="nc-status-badge configured">Active</span>}
                 </div>
                 <div className="nc-integration-desc">
-                  Enables real-time web search and deep research reports. Once configured, Bianca can answer questions about current events, recent news, and conduct in-depth research.
+                  Powered by the Gemini Deep Research Agent — autonomously plans, searches the web, reads sources, and synthesises detailed reports with citations. Active whenever your Google API key is configured above.
                 </div>
-                <div className="nc-model-apikey">
-                  <label className="nc-form-label">Perplexity API Key</label>
-                  <input
-                    className="nc-form-input nc-apikey-input"
-                    type="password"
-                    placeholder="pplx-… (get yours at perplexity.ai/settings/api)"
-                    value={settings.perplexity_api_key || ''}
-                    onChange={(e) => updateSetting('perplexity_api_key', e.target.value)}
-                  />
-                  <div className="nc-subsection-hint">Enables <code>perplexity_search</code> (sonar) and <code>perplexity_deep_research</code> (sonar-deep-research) tools in chat.</div>
-                </div>
+                <div className="nc-subsection-hint">Uses <code>gemini_deep_research_tool</code> (deep-research-preview-04-2026). Invoke by asking Bianca to "write a research report on…" or "do a deep dive on…". Takes 2–10 minutes per task.</div>
               </div>
 
               {settingsDirty && (
@@ -1826,8 +1837,105 @@ export function NeuralConfig({ onGoToChat }) {
           <div className="nc-security-note">
             API keys are managed through environment variables on the server. Contact your administrator to update these settings.
           </div>
+
+          {/* Danger Zone */}
+          <div className="nc-danger-zone">
+            <div className="nc-danger-zone-header">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M8 1L1 14h14L8 1z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+                <path d="M8 6v4M8 11.5v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              Danger Zone
+            </div>
+            <div className="nc-danger-zone-body">
+              <div className="nc-danger-zone-item">
+                <div className="nc-danger-zone-info">
+                  <div className="nc-danger-zone-title">Delete account</div>
+                  <div className="nc-danger-zone-desc">
+                    Permanently removes your account, agent settings, all memories, sessions, tasks, skills, and knowledge. This cannot be undone.
+                  </div>
+                </div>
+                <button
+                  className="nc-delete-account-btn"
+                  onClick={() => { setDeleteConfirmEmail(''); setShowDeleteModal(true); }}
+                >
+                  Delete account
+                </button>
+              </div>
+            </div>
+          </div>
         </section>
       )}
+
+      {/* ── Delete Account Modal ─────────────────────────────────────────────── */}
+      {showDeleteModal && (
+        <div className="nc-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget && !deleteInProgress) setShowDeleteModal(false); }}>
+          <div className="nc-modal">
+            <div className="nc-modal-header">
+              <div className="nc-modal-icon-danger">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                  <path d="M11 2L2 19h18L11 2z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/>
+                  <path d="M11 9v5M11 15.5v.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                </svg>
+              </div>
+              <div>
+                <div className="nc-modal-title">Delete your account</div>
+                <div className="nc-modal-subtitle">This action is permanent and cannot be undone.</div>
+              </div>
+            </div>
+
+            <div className="nc-modal-what-deletes">
+              <div className="nc-modal-what-title">The following will be permanently deleted:</div>
+              <ul className="nc-modal-delete-list">
+                <li>Your account profile and authentication</li>
+                <li>All agent settings (name, model, API keys, persona)</li>
+                <li>All knowledge base content</li>
+                <li>All memories and conversation sessions</li>
+                <li>All skills (custom and installed)</li>
+                <li>All background tasks and their results</li>
+                <li>All values, contacts, and world model entries</li>
+              </ul>
+            </div>
+
+            <div className="nc-modal-confirm-field">
+              <label className="nc-modal-confirm-label">
+                Type <strong>{user.email}</strong> to confirm:
+              </label>
+              <input
+                className="nc-modal-confirm-input"
+                type="email"
+                placeholder={user.email}
+                value={deleteConfirmEmail}
+                onChange={(e) => setDeleteConfirmEmail(e.target.value)}
+                disabled={deleteInProgress}
+                autoFocus
+              />
+            </div>
+
+            <div className="nc-modal-actions">
+              <button
+                className="nc-modal-cancel-btn"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleteInProgress}
+              >
+                Cancel
+              </button>
+              <button
+                className="nc-modal-delete-btn"
+                onClick={handleDeleteAccount}
+                disabled={deleteConfirmEmail.trim().toLowerCase() !== user.email.toLowerCase() || deleteInProgress}
+              >
+                {deleteInProgress ? (
+                  <><span className="nc-modal-spinner" /> Deleting…</>
+                ) : (
+                  'Delete everything'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toast notifications */}
       {toasts.length > 0 && (
         <div className="nc-toast-container">

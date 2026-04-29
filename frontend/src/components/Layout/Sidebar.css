@@ -35,6 +35,9 @@
 }
 
 .sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-family: var(--font-display);
   font-size: 22px;
   font-weight: 700;
@@ -45,6 +48,15 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
   line-height: 1.1;
+}
+
+.sidebar-logo-icon {
+  height: 22px;
+  width: 22px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+  -webkit-text-fill-color: unset;
 }
 
 /* ─── New Chat button — gradient pill ────────────────────────────────────── */

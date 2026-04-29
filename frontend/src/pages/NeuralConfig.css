@@ -27,8 +27,6 @@
 .nc-header-logo {
   height: 22px;
   width: auto;
-  opacity: 0.72;
-  filter: drop-shadow(0 1px 6px rgba(41, 108, 172, 0.12));
 }
 
 .nc-footer {
@@ -2450,4 +2448,283 @@
 @keyframes nc-toast-in {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Danger Zone ─────────────────────────────────────────────────────────── */
+
+.nc-danger-zone {
+  margin-top: 32px;
+  border: 1px solid rgba(224, 82, 82, 0.25);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.nc-danger-zone-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  background: rgba(224, 82, 82, 0.06);
+  border-bottom: 1px solid rgba(224, 82, 82, 0.15);
+  font-size: 12px;
+  font-weight: 600;
+  color: #e05252;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.nc-danger-zone-body {
+  padding: 18px;
+}
+
+.nc-danger-zone-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.nc-danger-zone-info {
+  flex: 1;
+}
+
+.nc-danger-zone-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.nc-danger-zone-desc {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  max-width: 460px;
+}
+
+.nc-delete-account-btn {
+  flex-shrink: 0;
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1px solid rgba(224, 82, 82, 0.45);
+  background: rgba(224, 82, 82, 0.08);
+  color: #e05252;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+}
+
+.nc-delete-account-btn:hover {
+  background: rgba(224, 82, 82, 0.16);
+  border-color: rgba(224, 82, 82, 0.65);
+  box-shadow: 0 0 0 3px rgba(224, 82, 82, 0.08);
+}
+
+/* ── Delete Account Modal ────────────────────────────────────────────────── */
+
+.nc-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 24px;
+  animation: nc-fadein 0.15s ease;
+}
+
+@keyframes nc-fadein {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.nc-modal {
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-muted);
+  border-radius: 16px;
+  padding: 28px 32px 28px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(224, 82, 82, 0.12);
+  animation: nc-modal-in 0.2s ease;
+}
+
+@keyframes nc-modal-in {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.nc-modal-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.nc-modal-icon-danger {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: rgba(224, 82, 82, 0.12);
+  border: 1px solid rgba(224, 82, 82, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #e05252;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.nc-modal-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+  letter-spacing: -0.02em;
+}
+
+.nc-modal-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.nc-modal-what-deletes {
+  background: rgba(224, 82, 82, 0.06);
+  border: 1px solid rgba(224, 82, 82, 0.15);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+
+.nc-modal-what-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #e05252;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.nc-modal-delete-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.nc-modal-delete-list li {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.nc-modal-confirm-field {
+  margin-bottom: 22px;
+}
+
+.nc-modal-confirm-label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.nc-modal-confirm-label strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.nc-modal-confirm-input {
+  width: 100%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-muted);
+  border-radius: 9px;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  padding: 10px 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.nc-modal-confirm-input:focus {
+  border-color: rgba(224, 82, 82, 0.5);
+  box-shadow: 0 0 0 3px rgba(224, 82, 82, 0.08);
+}
+
+.nc-modal-confirm-input::placeholder {
+  color: var(--text-muted);
+}
+
+.nc-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.nc-modal-cancel-btn {
+  padding: 9px 20px;
+  border-radius: 9px;
+  border: 1px solid var(--border-muted);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.nc-modal-cancel-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.nc-modal-cancel-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.nc-modal-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 22px;
+  border-radius: 9px;
+  border: none;
+  background: #c0392b;
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, filter 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 14px rgba(192, 57, 43, 0.35);
+}
+
+.nc-modal-delete-btn:hover:not(:disabled) {
+  background: #a93226;
+  box-shadow: 0 4px 18px rgba(192, 57, 43, 0.5);
+}
+
+.nc-modal-delete-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.nc-modal-spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: nc-spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+@keyframes nc-spin {
+  to { transform: rotate(360deg); }
 }

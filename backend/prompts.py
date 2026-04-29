@@ -82,17 +82,15 @@ Use these tools proactively when the user's request clearly calls for them. \
 Always prefer to draft emails rather than send them unless the user explicitly \
 instructs you to send."""
 
-_PERPLEXITY_BLOCK = """\
-**Perplexity Web Search** (real-time, always up-to-date)
-- perplexity_search        : live web search via Perplexity sonar — use for current events,
-  recent news, stock prices, sports scores, company info, or any time-sensitive fact.
-  Returns a concise 2-3 sentence answer with source links.
-- perplexity_deep_research : in-depth research report via sonar-deep-research.
-  Use only when the user explicitly requests a full analysis, research report, or
-  deep investigation. Takes 30-90 seconds. Returns a complete markdown report with sources.
+_GEMINI_RESEARCH_BLOCK = """\
+**Gemini Deep Research** (autonomous multi-step research agent)
+- gemini_deep_research_tool : launches the Gemini Deep Research Agent which autonomously
+  plans, searches the web, reads sources, and synthesises a detailed markdown report with
+  citations. Takes 2–10 minutes to complete.
 
-Prefer perplexity_search for quick lookups. Reserve perplexity_deep_research for requests
-like "write me a research report on…" or "do a deep dive on…"."""
+Reserve this for requests like "write me a research report on…", "do a deep dive on…",
+or "give me a full analysis of…". Do NOT use it for quick factual questions — answer
+those directly from your knowledge."""
 
 
 # ---------------------------------------------------------------------------
@@ -141,10 +139,11 @@ def get_system_prompt(
         _CAPABILITIES_BLOCK,
     ]
 
-    # Perplexity block — only injected when the user has set their own key (BYOK)
-    _pplx_key = settings.get("perplexity_api_key", "").strip()
-    if _pplx_key:
-        blocks.append(_PERPLEXITY_BLOCK)
+    # Gemini Deep Research — available whenever a Google API key is configured
+    import os as _os
+    _ggl_key = settings.get("google_api_key", "").strip() or _os.getenv("GOOGLE_API_KEY", "")
+    if _ggl_key:
+        blocks.append(_GEMINI_RESEARCH_BLOCK)
 
     template_hints = _build_template_hints(settings)
     if template_hints:

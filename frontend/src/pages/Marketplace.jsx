@@ -7,7 +7,7 @@ import { useSkills } from '../hooks/useSkills';
 import { Footer } from '../components/Layout/Footer';
 import './Marketplace.css';
 
-const LOGO = import.meta.env.BASE_URL + 'lyftbridge.jpeg';
+const LOGO = import.meta.env.BASE_URL + 'lyftbridge-wordmark-dark.png';
 
 export function Marketplace({ onGoToChat }) {
   const { user } = useAuth();
