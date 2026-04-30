@@ -1,9 +1,9 @@
 """
-System prompt assembly for Bianca.
+System prompt assembly for Bianc.ai.
 
 The prompt is built in layers, each with a distinct responsibility:
 
-  Layer 1 — Identity anchor    : who Bianca is + current date/time
+  Layer 1 — Identity anchor    : who Bianc.ai is + current date/time
   Layer 2 — Knowledge base     : persona, training, expertise, product context
   Layer 3 — Values             : non-negotiable behavioral rules (highest authority)
   Layer 4 — Capabilities       : tools available in this session
@@ -21,7 +21,7 @@ from user_config_loader import load_user_settings, build_user_knowledge_block, b
 # ---------------------------------------------------------------------------
 
 def _build_identity_block(settings: dict) -> str:
-    ai_name = settings.get("ai_name", "Bianca")
+    ai_name = settings.get("ai_name", "Bianc.ai")
     ai_role = settings.get("ai_role", "AI Chief of Staff")
     now = datetime.now()
     date_str = now.strftime("%A, %B %d, %Y")   # e.g., "Friday, March 13, 2026"

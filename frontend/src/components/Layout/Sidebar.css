@@ -34,29 +34,22 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.sidebar-logo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  margin: 0 0 16px 2px;
-  background: var(--gradient-text);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  line-height: 1.1;
+.sidebar-logo-wordmark {
+  display: block;
+  height: 26px;
+  width: auto;
+  max-width: 160px;
+  margin: 0 0 6px 2px;
 }
 
-.sidebar-logo-icon {
-  height: 22px;
-  width: 22px;
-  border-radius: 4px;
-  object-fit: cover;
-  flex-shrink: 0;
-  -webkit-text-fill-color: unset;
+.sidebar-product-name {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 0 16px 4px;
 }
 
 /* ─── New Chat button — gradient pill ────────────────────────────────────── */
@@ -218,14 +211,15 @@
   gap: 6px;
 }
 
-.sidebar-brand-footer .lb-footer__logo {
-  height: 13px;
-  opacity: 0.35;
+.sidebar-brand-footer .lb-footer__mark {
+  height: 11px;
+  width: 11px;
+  opacity: 0.4;
 }
 
 .sidebar-brand-footer .lb-footer__copy {
-  font-size: 10px;
-  opacity: 0.5;
+  font-size: 9.5px;
+  opacity: 0.55;
 }
 
 .sidebar-config-btn {

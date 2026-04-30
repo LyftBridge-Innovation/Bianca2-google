@@ -7,7 +7,7 @@ Run from the backend/ directory with the venv active:
 What this tests:
   1. get_system_prompt(user_id) assembles a prompt using the test user's
      Firestore config (set up in Phase 1 tests).
-  2. The identity block uses the per-user ai_name ("Aria") not the default ("Bianca").
+  2. The identity block uses the per-user ai_name ("Aria") not the default ("Bianc.ai").
   3. The knowledge block contains the user's custom persona text.
   4. The values block contains the user's custom values.
   5. A user with no knowledge configured gets an empty knowledge block (safe).
@@ -63,7 +63,7 @@ def main():
     # ── 2. load_user_settings for unknown user returns defaults ───────────────
     print("\n2. load_user_settings for unknown user → defaults")
     d = load_user_settings("definitely_nonexistent_user_xyz")
-    check("defaults to ai_name 'Bianca'", d["ai_name"] == "Bianca")
+    check("defaults to ai_name 'Bianc.ai'", d["ai_name"] == "Bianc.ai")
     check("defaults to empty api keys", d["anthropic_api_key"] == "")
 
     # ── 3. System prompt for configured test user ─────────────────────────────
@@ -81,7 +81,7 @@ def main():
     print("\n4. get_system_prompt for empty user")
     ep = get_system_prompt(user_id=EMPTY_USER_ID)
     check("prompt still non-empty (identity + defaults)", len(ep) > 50)
-    check("identity uses default name 'Bianca'", "You are Bianca" in ep)
+    check("identity uses default name 'Bianc.ai'", "You are Bianc.ai" in ep)
     check("default BIANCA_VALUES injected", "Draft Before Send" in ep)
     check("no knowledge block (no files configured)", "KNOWLEDGE BASE" not in ep)
 

@@ -1,5 +1,5 @@
 """
-Gemini Deep Research tool for Bianca.
+Gemini Deep Research tool for Bianc.ai.
 
 Uses the Gemini Interactions API (deep-research-preview-04-2026) to run
 autonomous multi-step research tasks. Research runs in the background and

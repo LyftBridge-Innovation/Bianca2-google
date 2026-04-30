@@ -1,12 +1,12 @@
 """
-Knowledge base loader for Bianca.
+Knowledge base loader for Bianc.ai.
 
 Reads the knowledge/ directory and assembles a structured system instruction
 from persona, education, expertise, and company context files.
 
 Directory layout:
   backend/knowledge/
-    01_persona/      — who Bianca is
+    01_persona/      — who Bianc.ai is
     02_education/    — her training background
     03_expertise/    — domain knowledge
     04_company/      — product and mission context
@@ -60,7 +60,7 @@ def _load_section(dir_name: str, section_name: str) -> str:
 
 
 def _load_education_block() -> str:
-    """Load configured education data and format as Bianca's background."""
+    """Load configured education data and format as Bianc.ai's background."""
     if not _EDUCATION_PATH.exists():
         return ""
 
@@ -103,7 +103,7 @@ def _load_education_block() -> str:
 
 
 def _load_resume_block() -> str:
-    """Load configured work experience and format as Bianca's professional background."""
+    """Load configured work experience and format as Bianc.ai's professional background."""
     if not _RESUME_PATH.exists():
         return ""
 
@@ -167,7 +167,7 @@ def build_knowledge_block() -> str:
     header = "=== BIANCA'S KNOWLEDGE BASE ==="
     footer = (
         "=== BEHAVIORAL GUIDELINES ===\n"
-        "1. Stay fully in character as Bianca at all times — confident, warm, direct.\n"
+        "1. Stay fully in character as Bianc.ai at all times — confident, warm, direct.\n"
         "2. Use your domain expertise actively; do not hedge unnecessarily.\n"
         "3. Apply your knowledge of the user's work context when responding.\n"
         "4. Keep responses appropriately concise — say what needs to be said, no more.\n"

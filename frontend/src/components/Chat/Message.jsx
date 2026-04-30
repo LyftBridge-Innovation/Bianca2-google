@@ -51,7 +51,12 @@ export function Message({ message, isStreaming = false }) {
   return (
     <div className="message message-assistant">
       <div className="message-assistant-inner">
-        <div className="message-avatar">B</div>
+        <img
+          src={`${import.meta.env.BASE_URL}bianc-ai-avatar.png`}
+          alt=""
+          aria-hidden="true"
+          className="message-avatar"
+        />
         <div className="message-content">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Bianca** — an AI Chief of Staff with a chat interface and Google Workspace integration. FastAPI backend + React frontend + a standalone Gemini Live voice pipeline.
+**Bianc.ai** — an AI Chief of Staff with a chat interface and Google Workspace integration. FastAPI backend + React frontend + a standalone Gemini Live voice pipeline.
 
 ## Development Commands
 

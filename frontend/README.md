@@ -1,6 +1,6 @@
-# Bianca Frontend
+# Bianc.ai Frontend
 
-Web chat interface for Bianca, the AI Chief of Staff.
+Web chat interface for Bianc.ai, the AI Chief of Staff.
 
 ## Features
 

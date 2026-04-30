@@ -832,7 +832,7 @@ export function NeuralConfig({ onGoToChat }) {
           {personaSubTab === 'identity' && (
             <>
               <h2 className="nc-section-title">AI Identity</h2>
-              <p className="nc-section-desc">Core identity fields that define who Bianca is.</p>
+              <p className="nc-section-desc">Core identity fields that define who Bianc.ai is.</p>
               {settingsLoading || !settings ? <div className="nc-loading">Loading...</div> : (
                 <div className="nc-knowledge-section">
                   <div className="nc-knowledge-body">
@@ -885,7 +885,7 @@ export function NeuralConfig({ onGoToChat }) {
           {personaSubTab === 'knowledge' && (
             <>
               <h2 className="nc-section-title">Knowledge Base</h2>
-              <p className="nc-section-desc">Files that shape Bianca's identity, expertise, and context.</p>
+              <p className="nc-section-desc">Files that shape Bianc.ai's identity, expertise, and context.</p>
               {knowledgeLoading ? <div className="nc-loading">Loading...</div> : sections === null ? null : (
                 sections.map((section) => {
                   const isEditing = editingFile?.section_id === section.section_id;
@@ -1087,7 +1087,7 @@ export function NeuralConfig({ onGoToChat }) {
             </button>
             <input ref={fileInputRef} type="file" accept=".md" onChange={handleUpload} style={{ display: 'none' }} />
           </div>
-          <p className="nc-section-desc">Upload markdown files to teach Bianca custom skills and preferences.</p>
+          <p className="nc-section-desc">Upload markdown files to teach Bianc.ai custom skills and preferences.</p>
           {loading ? <div className="nc-loading">Loading skills...</div> : skills.length === 0 ? (
             <div className="nc-empty">
               <div className="nc-empty-icon"><svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect x="7" y="4" width="18" height="24" rx="2" stroke="currentColor" strokeWidth="1.5"/><path d="M12 12H20M12 16H18M12 20H16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg></div>
@@ -1494,7 +1494,7 @@ export function NeuralConfig({ onGoToChat }) {
                   {phoneNumber && <span className="nc-status-badge configured">Registered</span>}
                 </div>
                 <div className="nc-integration-desc">
-                  Register your phone number so Bianca recognizes you when you call. Bianca will answer with full access to your Gmail, Calendar, Drive, and all tools.
+                  Register your phone number so Bianc.ai recognizes you when you call. Bianc.ai will answer with full access to your Gmail, Calendar, Drive, and all tools.
                 </div>
                 <div style={{ marginBottom: 10 }}>
                   <label className="nc-form-label">Your Phone Number (E.164 format)</label>
@@ -1516,7 +1516,7 @@ export function NeuralConfig({ onGoToChat }) {
                       setPhoneSaving(true);
                       try {
                         await savePhoneNumber(user.userId, phoneNumber.trim());
-                        addToast('Phone number saved — Bianca will recognize your calls.', 'success');
+                        addToast('Phone number saved — Bianc.ai will recognize your calls.', 'success');
                       } catch (err) {
                         addToast(`Failed to save: ${err.message}`, 'error');
                       } finally {
@@ -1567,7 +1567,7 @@ export function NeuralConfig({ onGoToChat }) {
                   )}
                 </div>
                 <div className="nc-integration-desc">
-                  Bianca monitors a Gmail label and auto-replies to incoming emails using your full persona and context. Powered by Gmail Push Notifications — instant, no polling.
+                  Bianc.ai monitors a Gmail label and auto-replies to incoming emails using your full persona and context. Powered by Gmail Push Notifications — instant, no polling.
                 </div>
 
                 {emailAgentLoading ? (
@@ -1578,13 +1578,13 @@ export function NeuralConfig({ onGoToChat }) {
                       <label className="nc-form-label">Gmail Label to Watch</label>
                       <input
                         className="nc-template-input"
-                        placeholder="e.g. Bianca_Contacts"
+                        placeholder="e.g. Bianc.ai_Contacts"
                         value={emailAgentLabelInput}
                         onChange={(e) => setEmailAgentLabelInput(e.target.value)}
                         disabled={emailAgentStatus?.enabled}
                       />
                       <div className="nc-subsection-hint">
-                        Create this label in Gmail and set up a filter to route emails there. Bianca will only reply to emails in this label.
+                        Create this label in Gmail and set up a filter to route emails there. Bianc.ai will only reply to emails in this label.
                       </div>
                     </div>
 
@@ -1693,7 +1693,7 @@ export function NeuralConfig({ onGoToChat }) {
                 <div className="nc-integration-desc">
                   Powered by the Gemini Deep Research Agent — autonomously plans, searches the web, reads sources, and synthesises detailed reports with citations. Active whenever your Google API key is configured above.
                 </div>
-                <div className="nc-subsection-hint">Uses <code>gemini_deep_research_tool</code> (deep-research-preview-04-2026). Invoke by asking Bianca to "write a research report on…" or "do a deep dive on…". Takes 2–10 minutes per task.</div>
+                <div className="nc-subsection-hint">Uses <code>gemini_deep_research_tool</code> (deep-research-preview-04-2026). Invoke by asking Bianc.ai to "write a research report on…" or "do a deep dive on…". Takes 2–10 minutes per task.</div>
               </div>
 
               {settingsDirty && (

@@ -3,7 +3,7 @@ Document skill context loader.
 
 When a user asks to create a document, spreadsheet, presentation, or PDF,
 the relevant instruction block is injected into the system prompt so that
-Bianca knows exactly how to write the generation code.
+Bianc.ai knows exactly how to write the generation code.
 
 Only one document type is matched per message — the first match wins.
 """

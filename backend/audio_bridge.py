@@ -20,7 +20,7 @@ with warnings.catch_warnings():
 
 # ── Sample-rate constants ─────────────────────────────────────────────────────
 
-_TWILIO_RATE    = 8_000   # μ-law, both inbound (caller) and outbound (Bianca)
+_TWILIO_RATE    = 8_000   # μ-law, both inbound (caller) and outbound (Bianc.ai)
 _GEMINI_IN_RATE = 16_000  # PCM expected by GeminiSession.send_audio
 _GEMINI_OUT_RATE = 24_000 # PCM produced by Gemini Live receive_loop by default
 

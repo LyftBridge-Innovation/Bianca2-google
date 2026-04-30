@@ -19,7 +19,7 @@ def generate_human_readable(tool_name: str, parameters: dict, result: str) -> st
     Generate a human-readable description of a tool action.
     Uses a cheap LLM model for cost efficiency.
     
-    Returns a sentence like: "Bianca declined a meeting with Sarah on Feb 19"
+    Returns a sentence like: "Bianc.ai declined a meeting with Sarah on Feb 19"
     """
     prompt = f"""Write one sentence describing what {ASSISTANT_NAME} just did, from the user's perspective.
 
