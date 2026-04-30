@@ -119,7 +119,7 @@ export function Sidebar({
           alt="Lyftbridge"
           className="sidebar-logo-wordmark"
         />
-        <div className="sidebar-product-name">Bianca</div>
+        <div className="sidebar-product-name">Bianc.ai</div>
         <button className="sidebar-new-chat" onClick={onNewChat}>
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path

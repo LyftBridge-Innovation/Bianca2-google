@@ -12,7 +12,7 @@ import uuid
 
 class AgentSettings(BaseModel):
     """Per-user agent configuration — embedded in the User document."""
-    ai_name: str = "Bianca"
+    ai_name: str = "Bianc.ai"
     ai_role: str = "AI Chief of Staff"
     ai_voice: str = "Aoede"
     primary_language: str = "English"
@@ -41,7 +41,7 @@ class User(BaseModel):
     company: str = ""
     timezone: str = "UTC"
     google_refresh_token: str = ""
-    assistant_name: str = "Bianca"
+    assistant_name: str = "Bianc.ai"
     enabled_skills: list[str] = Field(
         default_factory=list,
         description="Skill names enabled for this user. Empty = all skills."

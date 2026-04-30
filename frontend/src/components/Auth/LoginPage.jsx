@@ -107,7 +107,7 @@ export function LoginPage() {
             </div>
 
             <h1 className="login-headline">
-              Meet <span className="login-headline__gradient">Bianca</span>
+              Meet <span className="login-headline__gradient">Bianc.ai</span>
             </h1>
 
             <p className="login-description">
@@ -165,9 +165,14 @@ export function LoginPage() {
 
             {/* Central card */}
             <div className="login-hero-card login-hero-card--center">
-              <div className="login-hero-card__avatar">B</div>
+              <img
+                src={`${import.meta.env.BASE_URL}bianc-ai-avatar.png`}
+                alt=""
+                aria-hidden="true"
+                className="login-hero-card__avatar"
+              />
               <div className="login-hero-card__info">
-                <span className="login-hero-card__name">Bianca</span>
+                <span className="login-hero-card__name">Bianc.ai</span>
                 <span className="login-hero-card__role">Chief of Staff</span>
               </div>
               <div className="login-hero-card__dot" />

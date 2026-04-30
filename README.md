@@ -1,6 +1,6 @@
-# Bianca — Your AI MBA Agent
+# Bianc.ai — Your AI MBA Agent
 
-**Bianca** is a personalised AI MBA Agent built by Lyftbridge. Each user signs in with their Google account, configures their own agent (name, persona, model, values), and gets a private AI that can manage their Gmail, Google Calendar, Drive, Docs, Sheets, Slides, Tasks, and Contacts — plus conduct deep research using Gemini.
+**Bianc.ai** is a personalised AI MBA Agent built by Lyftbridge. Each user signs in with their Google account, configures their own agent (name, persona, model, values), and gets a private AI that can manage their Gmail, Google Calendar, Drive, Docs, Sheets, Slides, Tasks, and Contacts — plus conduct deep research using Gemini.
 
 ---
 
@@ -296,7 +296,7 @@ FIREBASE_CREDENTIALS_PATH=firebase-credentials.json
 FIREBASE_DATABASE_NAME=bianca2
 GOOGLE_APPLICATION_CREDENTIALS=firebase-credentials.json
 
-ASSISTANT_NAME=Bianca
+ASSISTANT_NAME=Bianc.ai
 
 VERTEX_DATASTORE_ID=bianca-memories_1771699589953
 VERTEX_LOCATION=global
@@ -373,7 +373,7 @@ This opens a microphone session with Gemini Live. Press `Ctrl+C` to stop.
 | `FIREBASE_CREDENTIALS_PATH` | Path to service account JSON file | `firebase-credentials.json` |
 | `FIREBASE_DATABASE_NAME` | Firestore database name | `bianca2` |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Path to service account key (used by Google SDKs) | Same file as `firebase-credentials.json` |
-| `ASSISTANT_NAME` | Default name for the assistant | `Bianca` |
+| `ASSISTANT_NAME` | Default name for the assistant | `Bianc.ai` |
 | `VERTEX_DATASTORE_ID` | Vertex AI Search datastore for memory retrieval | `bianca-memories_1771699589953` |
 | `VERTEX_LOCATION` | Vertex AI Search location | `global` |
 | `VERTEX_PROJECT_ID` | GCP project for Vertex AI | `bianca2-73d98` |

@@ -1,5 +1,5 @@
 /* ─── Fonts ─────────────────────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
 
 /* ─── Reset ──────────────────────────────────────────────────────────────── */
 *, *::before, *::after {
@@ -85,8 +85,8 @@
   --glass-border:   1px solid rgba(255, 255, 255, 0.055);
 
   /* Typography */
-  --font-display: 'Space Grotesk', system-ui, sans-serif;
-  --font-body:    'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: Arial, Helvetica, sans-serif;
+  --font-body:    Arial, Helvetica, sans-serif;
   --font-mono:    'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
 
   /* Radii */

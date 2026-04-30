@@ -56,7 +56,7 @@
 }
 
 .ob-headline {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   font-size: 26px;
   font-weight: 700;
   color: var(--text-primary);
@@ -163,7 +163,7 @@
 }
 
 .ob-step-title {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   font-size: 20px;
   font-weight: 600;
   color: var(--text-primary);
@@ -219,7 +219,7 @@
   border: 1px solid var(--border-muted);
   border-radius: 10px;
   color: var(--text-primary);
-  font-family: 'Inter', sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   font-size: 14px;
   padding: 10px 14px;
   outline: none;
@@ -443,7 +443,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: 'Inter', sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   font-size: 14px;
   font-weight: 500;
   padding: 10px 22px;
@@ -599,7 +599,7 @@
 }
 
 .ob-mode-title {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
@@ -610,7 +610,7 @@
 }
 
 .ob-mode-badge {
-  font-family: 'Inter', sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.05em;
@@ -851,7 +851,7 @@
   border: 1px solid var(--border-muted);
   border-radius: 12px;
   color: var(--text-primary);
-  font-family: 'Inter', sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   font-size: 14px;
   padding: 10px 14px;
   outline: none;

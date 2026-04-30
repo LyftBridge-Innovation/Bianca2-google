@@ -98,7 +98,7 @@ def main():
     # ── 1. Default AgentSettings values ───────────────────────────────────────
     print("1. AgentSettings defaults")
     defaults = AgentSettings()
-    check("ai_name defaults to 'Bianca'", defaults.ai_name == "Bianca")
+    check("ai_name defaults to 'Bianc.ai'", defaults.ai_name == "Bianc.ai")
     check("model defaults to 'claude-sonnet-4-6'", defaults.model == "claude-sonnet-4-6")
     check("API keys default to empty string", defaults.anthropic_api_key == "" and defaults.google_api_key == "")
     check("onboarding fields on User", User(user_id="x", email="x@x.com").onboarding_completed is False)
@@ -177,7 +177,7 @@ def main():
     print("\n10. Backward compatibility")
     raw = {"user_id": "legacy_user", "email": "old@example.com"}
     legacy_user = User(**raw)
-    check("legacy user gets default AgentSettings", legacy_user.agent_settings.ai_name == "Bianca")
+    check("legacy user gets default AgentSettings", legacy_user.agent_settings.ai_name == "Bianc.ai")
     check("legacy user onboarding_completed=False", legacy_user.onboarding_completed is False)
 
     # ── Summary ───────────────────────────────────────────────────────────────

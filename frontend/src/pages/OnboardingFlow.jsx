@@ -227,7 +227,7 @@ function AIChatOnboarding({ user, onComplete, onBack }) {
         // Inject the BYOK key into the right field based on provider
         const isGoogle = (res.provider || provider) === 'google';
         await completeOnboarding(user.userId, {
-          ai_name:           fields.ai_name          || 'Bianca',
+          ai_name:           fields.ai_name          || 'Bianc.ai',
           ai_role:           fields.ai_role           || 'AI Chief of Staff',
           primary_language:  fields.primary_language  || 'English',
           model:             fields.model             || (isGoogle ? 'gemini-2.5-flash' : 'claude-sonnet-4-6'),
@@ -288,7 +288,7 @@ function AIChatOnboarding({ user, onComplete, onBack }) {
           </svg>
         </div>
         <div className="ob-chat-header-text">
-          <span className="ob-chat-name">Bianca Setup</span>
+          <span className="ob-chat-name">Bianc.ai Setup</span>
           <span className="ob-chat-status">
             {provider === 'anthropic' ? 'Powered by Claude Haiku' : 'Powered by Gemini 2.5 Flash'}
           </span>
@@ -358,7 +358,7 @@ export function OnboardingFlow() {
   const [error, setError] = useState('');
 
   // Step 1 — Identity
-  const [agentName, setAgentName]   = useState('Bianca');
+  const [agentName, setAgentName]   = useState('Bianc.ai');
   const [agentRole, setAgentRole]   = useState('AI Chief of Staff');
   const [language, setLanguage]     = useState('English');
   const [model, setModel]           = useState('claude-sonnet-4-6');
@@ -501,7 +501,7 @@ export function OnboardingFlow() {
                       className="ob-input"
                       value={agentName}
                       onChange={(e) => setAgentName(e.target.value)}
-                      placeholder="e.g. Bianca, Aria, Max…"
+                      placeholder="e.g. Bianc.ai, Aria, Max…"
                       maxLength={40}
                     />
                   </div>
@@ -616,7 +616,7 @@ export function OnboardingFlow() {
                       className="ob-textarea"
                       value={persona}
                       onChange={(e) => setPersona(e.target.value)}
-                      placeholder={`${agentName || 'Bianca'} is a sharp, direct advisor with a background in…\n\nSpeak with confidence and warmth. Prioritise clarity over formality.`}
+                      placeholder={`${agentName || 'Bianc.ai'} is a sharp, direct advisor with a background in…\n\nSpeak with confidence and warmth. Prioritise clarity over formality.`}
                       rows={4}
                     />
                   </div>
@@ -708,7 +708,7 @@ export function OnboardingFlow() {
                   {saving ? (
                     <><span className="ob-spinner" /> Launching…</>
                   ) : (
-                    <>Launch {agentName || 'Bianca'} <span className="ob-launch-icon">⚡</span></>
+                    <>Launch {agentName || 'Bianc.ai'} <span className="ob-launch-icon">⚡</span></>
                   )}
                 </button>
               )}
