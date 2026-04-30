@@ -1,7 +1,7 @@
 """
 LLM pipeline for generating autonomous email replies.
 
-Loads Bianca's full system prompt (identity + knowledge + values) and
+Loads Bianc.ai's full system prompt (identity + knowledge + values) and
 generates a professional plain-text reply to an incoming email.
 Supports both Claude (Anthropic) and Gemini (Vertex AI) based on settings.
 """
@@ -36,11 +36,11 @@ def generate_reply(user_id: str, email: dict) -> str:
     try:
         db = FirestoreCollections()
         user = db.get_user(user_id)
-        user_name = user.full_name if user and user.full_name else "Bianca"
+        user_name = user.full_name if user and user.full_name else "Bianc.ai"
     except Exception:
-        user_name = "Bianca"
+        user_name = "Bianc.ai"
 
-    ai_name = settings.get("ai_name", "Bianca")
+    ai_name = settings.get("ai_name", "Bianc.ai")
 
     # Build the full system prompt: identity + knowledge + values
     system_prompt = "\n\n".join(

@@ -95,7 +95,7 @@ def complete_onboarding(body: OnboardingCompleteRequest):
     # Preserve any existing settings (e.g. temperature, template IDs) and overlay
     merged = user.agent_settings.model_dump()
     merged.update({
-        "ai_name": body.ai_name.strip() or "Bianca",
+        "ai_name": body.ai_name.strip() or "Bianc.ai",
         "ai_role": body.ai_role.strip() or "AI Chief of Staff",
         "primary_language": body.primary_language or "English",
         "model": body.model or "claude-sonnet-4-6",
@@ -125,7 +125,7 @@ def complete_onboarding(body: OnboardingCompleteRequest):
 # ── AI-guided onboarding chat ─────────────────────────────────────────────────
 
 _ONBOARDING_SYSTEM_PROMPT = """
-You are a friendly, concise AI assistant helping a user set up their personal AI agent on the Bianca platform.
+You are a friendly, concise AI assistant helping a user set up their personal AI agent on the Bianc.ai platform.
 Your job is to gather configuration information through natural, conversational questions — one topic at a time.
 
 NOTE: The user has already provided their API key before starting this chat. Do NOT ask for an API key.

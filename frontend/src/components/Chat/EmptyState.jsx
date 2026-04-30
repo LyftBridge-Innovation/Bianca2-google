@@ -46,7 +46,12 @@ export function EmptyState() {
 
       <div className="empty-state-content">
         {/* Brand mark */}
-        <div className="empty-state-mark" aria-hidden="true">B</div>
+        <img
+          src={`${import.meta.env.BASE_URL}bianc-ai-avatar.png`}
+          alt=""
+          aria-hidden="true"
+          className="empty-state-mark"
+        />
 
         {/* Section badge */}
         <div className="section-badge empty-state-badge">

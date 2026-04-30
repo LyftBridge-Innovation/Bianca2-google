@@ -41,4 +41,4 @@ MEMORY_MAX_RESULTS = int(os.getenv("MEMORY_MAX_RESULTS", "5"))
 MEMORY_MIN_RESULTS_THRESHOLD = int(os.getenv("MEMORY_MIN_RESULTS_THRESHOLD", "3"))
 
 # Assistant configuration
-ASSISTANT_NAME = os.getenv("ASSISTANT_NAME", "Bianca")
+ASSISTANT_NAME = os.getenv("ASSISTANT_NAME", "Bianc.ai")

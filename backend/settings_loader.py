@@ -7,7 +7,7 @@ from typing import Any
 _SETTINGS_PATH = Path(__file__).parent / "knowledge" / "settings.json"
 
 _DEFAULT_SETTINGS: dict[str, Any] = {
-    "ai_name": "Bianca",
+    "ai_name": "Bianc.ai",
     "ai_role": "AI Chief of Staff",
     "ai_voice": "Aoede",
     "primary_language": "English",

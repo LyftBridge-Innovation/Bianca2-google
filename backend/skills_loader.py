@@ -1,5 +1,5 @@
 """
-YAML-based skill loader for Bianca AI assistant.
+YAML-based skill loader for Bianc.ai AI assistant.
 
 Reads skill YAML files from backend/skills/ and auto-generates:
   - LangChain @tool functions (for chat path)

@@ -121,7 +121,7 @@ def _lookup_user_by_phone(
     phone_number: str,
 ) -> tuple[str | None, str, str, str | None]:
     """
-    Look up a Bianca user by their registered phone_number field in Firestore.
+    Look up a Bianc.ai user by their registered phone_number field in Firestore.
 
     Returns:
         (user_id, full_name, email, None)       — on success
@@ -145,8 +145,8 @@ def _lookup_user_by_phone(
                 None,
             )
         return None, "", "", (
-            "Sorry, this number is not registered with Bianca. "
-            "Please sign in to Bianca and add your phone number under Neural Config, Integrations."
+            "Sorry, this number is not registered with Bianc.ai. "
+            "Please sign in to Bianc.ai and add your phone number under Neural Config, Integrations."
         )
     except Exception as exc:
         _log.error("Firestore phone lookup error: %s", exc)
@@ -355,7 +355,7 @@ async def media_stream(websocket: WebSocket):
 
                 caller_first = caller_full_name.split()[0] if caller_full_name else ""
 
-                # Build a one-line identity note appended to Bianca's system instruction
+                # Build a one-line identity note appended to Bianc.ai's system instruction
                 if caller_full_name or caller_email:
                     caller_context = (
                         f"The person calling is {caller_full_name}"
@@ -384,10 +384,10 @@ async def media_stream(websocket: WebSocket):
                 receive_task = asyncio.create_task(gemini.receive_loop(bridge))
                 drain_task   = asyncio.create_task(bridge.drain_loop())
 
-                # Kick off Bianca's opening greeting — personalized when name is known
+                # Kick off Bianc.ai's opening greeting — personalized when name is known
                 if caller_first:
                     greeting_prompt = (
-                        f"Greet {caller_first} warmly as Bianca. "
+                        f"Greet {caller_first} warmly as Bianc.ai. "
                         "Ask how you can help. One sentence only — warm and direct."
                     )
                 else:

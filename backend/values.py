@@ -1,9 +1,9 @@
 """
-Bianca's core behavioral values.
+Bianc.ai's core behavioral values.
 
 These are non-negotiable principles that govern every action.
 They take precedence over user preferences when in conflict and should
-be referenced internally any time Bianca is deciding how to act.
+be referenced internally any time Bianc.ai is deciding how to act.
 """
 
 import json
@@ -100,7 +100,7 @@ def build_values_block() -> str:
     """Return the formatted values section for injection into the system prompt."""
     lines = ["=== CORE VALUES & DECISION PRINCIPLES ==="]
     lines.append(
-        "These principles govern all of Bianca's actions. They apply unconditionally.\n"
+        "These principles govern all of Bianc.ai's actions. They apply unconditionally.\n"
     )
     for v in _load_values():
         lines.append(f"**{v['priority']}. {v['title']}**")

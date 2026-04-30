@@ -36,7 +36,7 @@ export function ChatInput({ onSend, disabled }) {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask Bianca anything..."
+          placeholder="Ask Bianc.ai anything..."
           disabled={disabled}
           rows={1}
         />

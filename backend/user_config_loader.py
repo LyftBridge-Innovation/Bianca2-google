@@ -88,7 +88,7 @@ def build_user_knowledge_block(user_id: str) -> str:
         return ""
 
     user = _get_fs().get_user(user_id)
-    ai_name = user.agent_settings.ai_name if user else "Bianca"
+    ai_name = user.agent_settings.ai_name if user else "Bianc.ai"
 
     header = f"=== {ai_name.upper()}'S KNOWLEDGE BASE ==="
     footer = (
