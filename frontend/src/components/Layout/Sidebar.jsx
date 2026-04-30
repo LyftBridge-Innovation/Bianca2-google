@@ -114,14 +114,12 @@ export function Sidebar({
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <h1 className="sidebar-logo">
-          <img
-            src={`${import.meta.env.BASE_URL}lyftbridge-favicon.png`}
-            alt=""
-            className="sidebar-logo-icon"
-          />
-          Bianca
-        </h1>
+        <img
+          src={`${import.meta.env.BASE_URL}lyftbridge-wordmark-dark.png`}
+          alt="Lyftbridge"
+          className="sidebar-logo-wordmark"
+        />
+        <div className="sidebar-product-name">Bianca</div>
         <button className="sidebar-new-chat" onClick={onNewChat}>
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path
