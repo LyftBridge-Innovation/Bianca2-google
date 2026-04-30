@@ -431,4 +431,29 @@ export async function completeOnboarding(userId, data) {
   });
 }
 
+/**
+ * Permanently delete a user account and all associated data.
+ * Requires confirm=true to execute (server-side guard).
+ */
+export async function deleteUser(userId) {
+  return apiRequest(`/admin/user/${encodeURIComponent(userId)}?confirm=true`, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * Send a message in the AI-guided onboarding chat (BYOK).
+ * @param {string} userId
+ * @param {string} message - The user's latest message
+ * @param {Array<{role: string, text: string}>} history - Full conversation history so far
+ * @param {string} apiKey - User's own Gemini or Anthropic API key
+ * @returns {{ reply: string, extracted: object, is_complete: boolean, provider: string }}
+ */
+export async function chatOnboarding(userId, message, history, apiKey) {
+  return apiRequest('/onboarding/chat', {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId, message, history, api_key: apiKey }),
+  });
+}
+
 export { API_BASE_URL };
