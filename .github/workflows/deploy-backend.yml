@@ -12,9 +12,15 @@ on:
       - '.github/workflows/deploy-backend.yml'
   workflow_dispatch:
 
+env:
+  PROJECT_ID: bianca2-73d98
+  REGION: us-central1
+  SERVICE: bianca-backend
+  IMAGE: us-central1-docker.pkg.dev/bianca2-73d98/bianca/bianca-backend
+
 jobs:
   deploy:
-    name: Submit Cloud Build
+    name: Build and Deploy to Cloud Run
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -25,8 +31,33 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
-      - name: Submit Cloud Build
-        run: gcloud builds submit . --project=bianca2-73d98
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t ${{ env.IMAGE }}:${{ github.sha }} \
+            -t ${{ env.IMAGE }}:latest \
+            -f Dockerfile .
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ env.IMAGE }}:${{ github.sha }}
+          docker push ${{ env.IMAGE }}:latest
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.SERVICE }} \
+            --image=${{ env.IMAGE }}:${{ github.sha }} \
+            --region=${{ env.REGION }} \
+            --platform=managed \
+            --allow-unauthenticated \
+            --port=8080 \
+            --cpu=1 \
+            --memory=1Gi \
+            --concurrency=80 \
+            --timeout=3600 \
+            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},GMAIL_PUBSUB_TOPIC=projects/${{ env.PROJECT_ID }}/topics/gmail-push,FIREBASE_DATABASE_NAME=bianca2,GOOGLE_WEB_CLIENT_ID=1068648751681-l8q67075qjac041gjsgbd5mlpqdd2ftc.apps.googleusercontent.com,GOOGLE_CLIENT_ID=1068648751681-l8q67075qjac041gjsgbd5mlpqdd2ftc.apps.googleusercontent.com,FIREBASE_PROJECT_ID=${{ env.PROJECT_ID }},VERTEX_PROJECT_ID=${{ env.PROJECT_ID }},VERTEX_DATASTORE_ID=bianca-memories_1771699589953,VERTEX_LOCATION=global,ASSISTANT_NAME=Bianca" \
+            --set-secrets="ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest,GOOGLE_WEB_CLIENT_SECRET=GOOGLE_WEB_CLIENT_SECRET:latest,GOOGLE_CLIENT_SECRET=GOOGLE_WEB_CLIENT_SECRET:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,TWILIO_AUTH_TOKEN=TWILIO_AUTH_TOKEN:latest,PERPLEXITY_API_KEY=PERPLEXITY_API_KEY:latest" \
+            --project=${{ env.PROJECT_ID }}
